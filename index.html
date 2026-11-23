@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d6e4f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Compra">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Lista de la compra</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230d6e4f'/%3E%3Cpath d='M16 18h6l5 22h20l4-15H25' fill='none' stroke='%23fff' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='29' cy='48' r='3.5' fill='%23f2c14e'/%3E%3Ccircle cx='45' cy='48' r='3.5' fill='%23f2c14e'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Plan: app de una columna. Arriba, escanear y añadir; debajo, la lista por pasillos. Hojas inferiores para la ficha del producto. */
+:root{
+  --bg:#f4f6f2; --surface:#ffffff; --ink:#18241c; --muted:#5f6d63; --line:#dfe5dc;
+  --accent:#0d6e4f; --accent-ink:#ffffff; --scan:#f2c14e; --scan-ink:#2a2105; --danger:#b3261e;
+  --good:#1e8a4c; --mid:#e08a00; --bad:#d0362a;
+  --font-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --font-body:"Figtree","Segoe UI",system-ui,-apple-system,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#111613; --surface:#1a211c; --ink:#e7eee8; --muted:#9aa89e; --line:#2b352e;
+    --accent:#3fbf8f; --accent-ink:#06150f; --scan:#e8b83f; --scan-ink:#1f1803; --danger:#ff8a80;
+    --good:#4cc47a; --mid:#f0a830; --bad:#ff6b5e;
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.4;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:640px;margin:0 auto;padding:calc(16px + env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:14px}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+h1{font-family:var(--font-display);font-weight:700;font-size:28px;line-height:1.05;margin:0;letter-spacing:-.01em}
+.count{color:var(--muted);font-size:14px;font-variant-numeric:tabular-nums;text-align:right}
+.btn{border:0;border-radius:12px;padding:12px 16px;font-weight:600;background:var(--accent);color:var(--accent-ink);display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+.btn.ghost{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+.btn.scan{background:var(--scan);color:var(--scan-ink);font-size:18px;padding:18px}
+.btn.danger{background:var(--danger);color:#fff}
+.btn:disabled{opacity:.5}
+.btn svg{width:22px;height:22px;flex:none}
+.add{display:flex;gap:8px}
+.add input{flex:1;min-width:0;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.filters{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:14px;color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.aisle{display:flex;flex-direction:column;gap:6px;margin-bottom:6px}
+.aisle h2{font-family:var(--font-display);font-size:14px;font-weight:600;margin:6px 0 0;display:flex;align-items:center;gap:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.dot{width:10px;height:10px;border-radius:50%;flex:none}
+.item{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.item.done{opacity:.55}
+.item.done .name{text-decoration:line-through}
+.check{width:28px;height:28px;border-radius:8px;border:2px solid var(--line);background:transparent;flex:none;display:grid;place-items:center;padding:0;color:var(--accent-ink)}
+.check[aria-checked="true"]{background:var(--accent);border-color:var(--accent)}
+.check svg{width:16px;height:16px}
+.thumb{width:46px;height:46px;border-radius:8px;object-fit:cover;flex:none;background:#fff}
+.body{flex:1;min-width:0;text-align:left;background:none;border:0;padding:0;display:flex;flex-direction:column;gap:3px}
+.name{font-weight:600;overflow-wrap:anywhere}
+.meta{font-size:13px;color:var(--muted);overflow-wrap:anywhere;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.qty{font-family:var(--font-display);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;font-size:15px}
+.ns{display:inline-grid;place-items:center;min-width:22px;height:20px;padding:0 5px;border-radius:5px;color:#fff;font-weight:700;font-size:12px;text-transform:uppercase;font-family:var(--font-display)}
+.empty{text-align:center;color:var(--muted);padding:28px 16px;border:1px dashed var(--line);border-radius:12px;display:flex;flex-direction:column;gap:6px}
+.empty strong{color:var(--ink);font-family:var(--font-display);font-size:18px}
+.tools{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.foot{font-size:13px;color:var(--muted);text-align:center}
+.foot a{color:inherit}
+/* hojas */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+.sheet{background:var(--bg);width:100%;max-width:640px;max-height:94%;overflow:auto;border-radius:18px 18px 0 0;padding:18px 16px calc(20px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px;-webkit-overflow-scrolling:touch}
+.sheet h3{font-family:var(--font-display);font-size:21px;line-height:1.15;margin:0}
+.status{font-size:14px;color:var(--muted)}
+.status.err{color:var(--danger)}
+.prod{display:flex;gap:14px;align-items:flex-start}
+.prod img{width:96px;height:96px;object-fit:contain;border-radius:10px;background:#fff;border:1px solid var(--line);flex:none}
+.prod .t{display:flex;flex-direction:column;gap:3px;min-width:0}
+.prod .brand{color:var(--muted);font-size:14px}
+.scores{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.score{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.score small{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.score .big{font-family:var(--font-display);font-weight:700;font-size:22px;color:#fff;border-radius:8px;min-width:40px;text-align:center;padding:2px 8px;text-transform:uppercase}
+.score .big.na{background:var(--line);color:var(--muted);font-size:14px;padding:6px 8px}
+.score span.d{font-size:12px;color:var(--muted);line-height:1.25}
+.nutr{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.nutr .r{display:flex;align-items:center;gap:10px;padding:9px 12px;border-top:1px solid var(--line)}
+.nutr .r:first-child{border-top:0}
+.nutr .r .l{flex:1}
+.nutr .r .v{font-variant-numeric:tabular-nums;font-weight:600}
+.nutr .r .lv{font-size:12px;color:var(--muted);width:56px;text-align:right}
+.nutr h4{margin:0;padding:10px 12px 0;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{font-size:13px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px 10px}
+.tag.warn{border-color:var(--bad);color:var(--bad)}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:13px;color:var(--muted);font-weight:500}
+.field input,.field select,.field textarea{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);width:100%}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.actions{display:flex;gap:8px}
+.actions .btn{flex:1}
+.myphoto{width:100%;max-height:220px;object-fit:contain;border-radius:12px;background:var(--surface);border:1px solid var(--line)}
+.confirm{background:var(--surface);border:1px solid var(--danger);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.copybox{width:100%;min-height:160px;border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--surface)}
+.src{font-size:12px;color:var(--muted)}
+.src a{color:inherit}
+/* escáner */
+.scanner{position:fixed;inset:0;background:#000;z-index:30;display:flex;flex-direction:column}
+.scanner video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.frame{position:absolute;left:50%;top:42%;width:min(78vw,340px);height:min(40vw,170px);transform:translate(-50%,-50%);border:3px solid var(--scan);border-radius:14px;box-shadow:0 0 0 9999px rgba(0,0,0,.45)}
+.frame::after{content:"";position:absolute;left:8%;right:8%;top:50%;height:2px;background:#ff4d4d;opacity:.8}
+.sc-top{position:relative;z-index:2;display:flex;justify-content:space-between;padding:calc(12px + env(safe-area-inset-top)) 14px 12px;gap:8px}
+.sc-top .btn{background:rgba(0,0,0,.55);color:#fff;border:1px solid rgba(255,255,255,.3);padding:10px 14px}
+.sc-bottom{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:16px 16px calc(20px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:10px;background:linear-gradient(transparent,rgba(0,0,0,.75) 35%)}
+.sc-msg{color:#fff;text-align:center;font-size:15px}
+.sc-bottom form{display:flex;gap:8px}
+.sc-bottom input{flex:1;min-width:0;padding:12px;border-radius:12px;border:0;background:rgba(255,255,255,.95);color:#111}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (prefers-reduced-motion: no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Lista de la compra</h1>
+    <span class="count" id="count"></span>
+  </header>
+
+  <button class="btn scan" type="button" id="scanBtn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 8v8M10 8v8M13 8v8M16 8v8"/></svg>
+    Escanear producto
+  </button>
+
+  <form class="add" id="addForm" autocomplete="off">
+    <label for="quick" class="sr">Añadir producto</label>
+    <input id="quick" placeholder="O escribe: 2 kg naranjas" enterkeyhint="done">
+    <button class="btn" type="submit">Añadir</button>
+  </form>
+
+  <div class="filters" role="group" aria-label="Filtro">
+    <button class="chip" type="button" data-f="pending" aria-pressed="true">Por comprar</button>
+    <button class="chip" type="button" data-f="all" aria-pressed="false">Todo</button>
+    <button class="chip" type="button" data-f="done" aria-pressed="false">En el carrito</button>
+  </div>
+
+  <main id="list" aria-live="polite"></main>
+
+  <div class="tools">
+    <button class="btn ghost" type="button" id="shareBtn">Enviar lista</button>
+    <button class="btn ghost" type="button" id="clearBtn">Quitar marcados</button>
+    <button class="btn ghost" type="button" id="exportBtn">Copia de seguridad</button>
+    <button class="btn ghost" type="button" id="importBtn">Restaurar copia</button>
+  </div>
+  <input type="file" id="importFile" accept="application/json,.json" hidden>
+  <input type="file" id="photoFile" accept="image/*" capture="environment" hidden>
+  <p class="foot">Datos de productos: <a href="https://es.openfoodfacts.org" target="_blank" rel="noopener">Open Food Facts</a> (ODbL). La lista se guarda solo en este móvil.</p>
+</div>
+
+<!-- Escáner -->
+<div class="scanner" id="scanner" hidden>
+  <video id="video" playsinline muted autoplay></video>
+  <div class="frame" aria-hidden="true"></div>
+  <div class="sc-top">
+    <button class="btn" type="button" id="scClose">Cerrar</button>
+    <button class="btn" type="button" id="scTorch" hidden>Linterna</button>
+  </div>
+  <div class="sc-bottom">
+    <div class="sc-msg" id="scMsg">Apunta al código de barras</div>
+    <form id="manualForm" autocomplete="off">
+      <label for="manualCode" class="sr">Código de barras</label>
+      <input id="manualCode" inputmode="numeric" placeholder="O escribe el número del código">
+      <button class="btn" type="submit">Buscar</button>
+    </form>
+  </div>
+</div>
+
+<!-- Hoja de producto -->
+<div class="scrim" id="pScrim" hidden>
+  <form class="sheet" id="pForm" role="dialog" aria-modal="true" aria-labelledby="pTitle" autocomplete="off">
+    <div class="status" id="pStatus"></div>
+    <div id="pInfo"></div>
+    <img class="myphoto" id="pPhoto" alt="Tu foto del producto" hidden>
+    <div class="field"><label for="fName">Nombre en la lista</label><input id="fName" required></div>
+    <div class="row3">
+      <div class="field"><label for="fQty">Cantidad</label><input id="fQty" type="number" inputmode="decimal" min="0" step="any" value="1"></div>
+      <div class="field"><label for="fUnit">Unidad</label>
+        <select id="fUnit"><option>ud</option><option>kg</option><option>g</option><option>L</option><option>paquete</option><option>pack</option><option>docena</option></select></div>
+      <div class="field"><label for="fCat">Pasillo</label><select id="fCat"></select></div>
+    </div>
+    <div class="field"><label for="fPref">Preferencia (marca, tamaño, variedad)</label><input id="fPref" placeholder="p. ej. Hacendado, 1 L, sin lactosa"></div>
+    <div class="field"><label for="fNotes">Notas</label><input id="fNotes"></div>
+    <div class="row">
+      <button class="btn ghost" type="button" id="pPhotoBtn">Hacer foto</button>
+      <button class="btn ghost" type="button" id="pPhotoDel" hidden>Quitar foto</button>
+    </div>
+    <div class="actions">
+      <button class="btn ghost" type="button" id="pCancel">Cerrar</button>
+      <button class="btn" type="submit" id="pSave">Añadir a la lista</button>
+    </div>
+    <button class="btn ghost" type="button" id="pAgain" hidden>Escanear otro</button>
+    <button class="btn ghost" type="button" id="pDelete" style="color:var(--danger)" hidden>Borrar de la lista</button>
+    <div class="confirm" id="pDelConfirm" hidden>
+      <span>¿Borrar este producto de la lista?</span>
+      <div class="actions"><button class="btn ghost" type="button" id="pDelNo">No</button><button class="btn danger" type="button" id="pDelYes">Sí, borrar</button></div>
+    </div>
+  </form>
+</div>
+
+<!-- Mensajes -->
+<div class="scrim" id="mScrim" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <h3 id="mTitle"></h3>
+    <div id="mBody"></div>
+    <div class="actions" id="mActions"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
+<script>
+(function(){
+"use strict";
+const CATS=[["Fruta y verdura","#3a9d4f"],["Panadería","#d98b2b"],["Carne y pescado","#c8473d"],["Lácteos y huevos","#d9a900"],["Despensa","#a0703c"],["Congelados","#3c7fc8"],["Bebidas","#2a9d9a"],["Limpieza","#7b5cc4"],["Higiene","#c4528f"],["Otros","#8a948d"]];
+const CAT_NAMES=CATS.map(c=>c[0]);
+const NS_COL={a:"#038141",b:"#85bb2f",c:"#e6b800",d:"#ee8100",e:"#e63e11"};
+const NOVA_COL={1:"#1e8a4c",2:"#c9a400",3:"#e07000",4:"#d0362a"};
+const NOVA_TXT={1:"Sin procesar o mínimamente procesado",2:"Ingrediente culinario procesado",3:"Alimento procesado",4:"Ultraprocesado"};
+const LV_TXT={low:"Bajo",moderate:"Moderado",high:"Alto"};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const cap=s=>s?s.charAt(0).toUpperCase()+s.slice(1):s;
+$("fCat").innerHTML=CAT_NAMES.map(c=>`<option>${esc(c)}</option>`).join("");
+
+/* ================= almacenamiento (IndexedDB, con respaldo en localStorage) ================= */
+const DB_NAME="lista-compra",STORE="kv",KEY="items";
+let idb=null;
+function openIDB(){return new Promise(res=>{try{const r=indexedDB.open(DB_NAME,1);r.onupgradeneeded=()=>r.result.createObjectStore(STORE);r.onsuccess=()=>res(r.result);r.onerror=()=>res(null)}catch(e){res(null)}})}
+function idbGet(){return new Promise(res=>{try{const t=idb.transaction(STORE,"readonly").objectStore(STORE).get(KEY);t.onsuccess=()=>res(t.result||null);t.onerror=()=>res(null)}catch(e){res(null)}})}
+function idbPut(v){return new Promise(res=>{try{const tx=idb.transaction(STORE,"readwrite");tx.objectStore(STORE).put(v,KEY);tx.oncomplete=()=>res(true);tx.onerror=()=>res(false)}catch(e){res(false)}})}
+let items={};
+let saveTimer=null;
+function persist(){clearTimeout(saveTimer);saveTimer=setTimeout(async()=>{let ok=false;if(idb)ok=await idbPut(items);if(!ok){try{localStorage.setItem(KEY,JSON.stringify(items));ok=true}catch(e){}}if(!ok)toast("No se ha podido guardar en el móvil. Haz una copia de seguridad.")},150)}
+async function loadAll(){
+  idb=await openIDB();
+  let v=idb?await idbGet():null;
+  if(!v){try{v=JSON.parse(localStorage.getItem(KEY)||"null")}catch(e){v=null}}
+  items=v&&typeof v==="object"?v:{};
+  try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
+}
+const newId=()=>"i"+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+function setItem(id,d){items[id]=d;persist();render()}
+function delItem(id){delete items[id];persist();render()}
+
+/* ================= lista ================= */
+const checkSvg='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>';
+let filter="pending";
+function fmtQty(d){const n=Number(d.qty);const s=Number.isFinite(n)?String(n).replace(".",","):"1";return d.unit&&d.unit!=="ud"?`${s} ${d.unit}`:`×${s}`}
+function nsBadge(g){return g&&NS_COL[g]?`<span class="ns" style="background:${NS_COL[g]}" title="Nutri-Score ${g.toUpperCase()}">${g}</span>`:""}
+function render(){
+  const all=Object.entries(items).sort((a,b)=>(a[1].createdAt||0)-(b[1].createdAt||0));
+  const pend=all.filter(([,d])=>!d.checked).length;
+  $("count").textContent=all.length?`${pend} por comprar · ${all.length-pend} en el carrito`:"";
+  const shown=all.filter(([,d])=>filter==="all"||(filter==="pending"?!d.checked:d.checked));
+  const list=$("list");
+  if(!all.length){list.innerHTML=`<div class="empty"><strong>La lista está vacía</strong><span>Escanea un producto para ver su ficha nutricional y añadirlo, o escribe su nombre arriba.</span></div>`;return}
+  if(!shown.length){list.innerHTML=`<div class="empty"><strong>${filter==="pending"?"Todo está en el carrito":"Nada marcado todavía"}</strong><span>Cambia el filtro para ver el resto.</span></div>`;return}
+  const groups={};shown.forEach(([id,d])=>{const c=CAT_NAMES.includes(d.cat)?d.cat:"Otros";(groups[c]=groups[c]||[]).push([id,d])});
+  list.innerHTML=CATS.filter(([c])=>groups[c]).map(([c,col])=>`<section class="aisle"><h2><span class="dot" style="background:${col}"></span>${esc(c)}</h2>${groups[c].map(([id,d])=>{
+    const img=d.photo||(d.off&&d.off.img)||"";
+    const meta=[d.pref,d.notes].filter(Boolean).join(" · ");
+    return `<div class="item${d.checked?" done":""}">
+      <button class="check" type="button" role="checkbox" aria-checked="${d.checked?"true":"false"}" aria-label="En el carrito: ${esc(d.name)}" data-check="${esc(id)}">${d.checked?checkSvg:""}</button>
+      ${img?`<img class="thumb" src="${esc(img)}" alt="" loading="lazy" referrerpolicy="no-referrer">`:""}
+      <button class="body" type="button" data-open="${esc(id)}"><span class="name">${esc(d.name)}</span>${(meta||d.off)?`<span class="meta">${d.off?nsBadge(d.off.ns):""}${esc(meta)}</span>`:""}</button>
+      <span class="qty">${esc(fmtQty(d))}</span></div>`}).join("")}</section>`).join("");
+}
+$("list").addEventListener("click",e=>{
+  const c=e.target.closest("[data-check]");if(c){const d=items[c.dataset.check];if(d){setItem(c.dataset.check,Object.assign({},d,{checked:!d.checked}))}return}
+  const o=e.target.closest("[data-open]");if(o)openSheet({id:o.dataset.open});
+});
+document.querySelectorAll(".chip").forEach(ch=>ch.addEventListener("click",()=>{filter=ch.dataset.f;document.querySelectorAll(".chip").forEach(x=>x.setAttribute("aria-pressed",x===ch?"true":"false"));render()}));
+
+/* ================= categorías ================= */
+function guessCat(name){
+  const n=(name||"").toLowerCase();
+  const rules=[
+    ["Fruta y verdura",/(manzana|naranja|plátano|platano|pera\b|uva|fresa|limón|limon|tomate(?! frito)|lechuga|cebolla|\bajo|patata|zanahoria|pimiento|calabac|pepino|aguacate|fruta|verdura|espinaca|brócoli|brocoli|champiñ|melón|melon|sandía|sandia|kiwi|mandarina)/],
+    ["Panadería",/(\bpan\b|baguette|barra de pan|bollo|croissant|magdalena|tostad)/],
+    ["Carne y pescado",/(pollo|ternera|cerdo|carne|filete|hamburgues|salchicha|jamón|jamon|chorizo|pavo|pescado|merluza|salmón|salmon|gamba|lomo|bacon|bacón)/],
+    ["Lácteos y huevos",/(leche|yogur|queso|mantequilla|nata|huevo|kéfir|kefir)/],
+    ["Congelados",/(congelad|helado|pizza)/],
+    ["Bebidas",/(agua|zumo|cerveza|vino|refresco|coca|bebida)/],
+    ["Limpieza",/(detergente|lejía|lejia|friegasuelos|lavavajillas|suavizante|bayeta|estropajo|bolsas de basura|limpia)/],
+    ["Higiene",/(papel higi|champú|champu|gel |desodorante|pasta de dientes|dentífrico|cepillo|compresa|pañal|toallit)/],
+    ["Despensa",/(arroz|pasta|macarr|espagueti|aceite|\bsal\b|azúcar|azucar|harina|garbanzo|lenteja|alubia|atún|atun|conserva|tomate frito|galleta|cereal|café|cafe|cacao|chocolate|especia|crema)/]
+  ];
+  for(const [c,r] of rules)if(r.test(n))return c;
+  return "Otros";
+}
+function catFromOff(tags,name){
+  const t=(tags||[]).join(" ");
+  const has=re=>re.test(t);
+  if(has(/en:frozen/))return "Congelados";
+  if(has(/en:beverages|en:waters|en:sodas|en:juices|en:beers|en:wines|en:alcoholic/))return has(/en:plant-based-milk|en:milks/)?"Lácteos y huevos":"Bebidas";
+  if(has(/en:dairies|en:milks|en:cheeses|en:yogurts|en:eggs|en:butters|en:creams/))return "Lácteos y huevos";
+  if(has(/en:meats|en:fishes|en:seafood|en:poultr|en:hams|en:sausages|en:prepared-meats/))return "Carne y pescado";
+  if(has(/en:breads|en:viennoiseries|en:pastries/))return "Panadería";
+  if(has(/en:fresh-fruits|en:fresh-vegetables/))return "Fruta y verdura";
+  if(has(/en:cleaning|en:household/))return "Limpieza";
+  if(t)return "Despensa";
+  return guessCat(name);
+}
+
+/* ================= añadir rápido ================= */
+function parseQuick(t){
+  t=t.trim();let qty=1,unit="ud",name=t;
+  const m=t.match(/^(\d+(?:[.,]\d+)?)\s*(kg|g|gr|l|litros?|ud|uds|unidades?|paquetes?|packs?|docenas?)?\s+(?:de\s+)?(.+)$/i);
+  if(m){qty=parseFloat(m[1].replace(",","."));const u=(m[2]||"").toLowerCase();
+    unit=u.startsWith("kg")?"kg":(u==="g"||u==="gr")?"g":u.startsWith("l")?"L":u.startsWith("paq")?"paquete":u.startsWith("pack")?"pack":u.startsWith("doc")?"docena":"ud";name=m[3]}
+  return {name:cap(name),qty,unit};
+}
+$("addForm").addEventListener("submit",e=>{
+  e.preventDefault();const v=$("quick").value;if(!v.trim())return;
+  const p=parseQuick(v);
+  setItem(newId(),{name:p.name,qty:p.qty,unit:p.unit,cat:guessCat(p.name),pref:"",notes:"",barcode:"",photo:"",off:null,checked:false,createdAt:Date.now()});
+  $("quick").value="";
+});
+
+/* ================= Open Food Facts ================= */
+const OFF_FIELDS="code,product_name,product_name_es,generic_name_es,brands,quantity,image_front_small_url,image_front_url,nutriscore_grade,nova_group,ecoscore_grade,nutriments,nutrient_levels,additives_tags,allergens_tags,categories_tags";
+const offCache=new Map();
+async function lookup(code){
+  if(offCache.has(code))return offCache.get(code);
+  const url=`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?lc=es&fields=${OFF_FIELDS}`;
+  const ctrl=new AbortController();const to=setTimeout(()=>ctrl.abort(),12000);
+  let r;try{r=await fetch(url,{signal:ctrl.signal})}finally{clearTimeout(to)}
+  if(r.status===404){offCache.set(code,null);return null}
+  if(!r.ok)throw new Error("http "+r.status);
+  const j=await r.json();
+  if(!j||j.status!==1||!j.product){offCache.set(code,null);return null}
+  const p=j.product,n=p.nutriments||{};
+  const num=k=>{const v=n[k+"_100g"];return typeof v==="number"?v:(v!=null&&v!==""&&!isNaN(+v)?+v:null)};
+  const ns=(p.nutriscore_grade||"").toLowerCase();const eco=(p.ecoscore_grade||"").toLowerCase();
+  const out={
+    code:p.code||code,
+    name:(p.product_name_es||p.product_name||p.generic_name_es||"").trim(),
+    brand:(p.brands||"").split(",")[0].trim(),
+    quantity:(p.quantity||"").trim(),
+    img:p.image_front_small_url||p.image_front_url||"",
+    ns:/^[a-e]$/.test(ns)?ns:"",
+    nova:[1,2,3,4].includes(+p.nova_group)?+p.nova_group:null,
+    eco:/^[a-e]$/.test(eco)?eco:"",
+    n:{kcal:num("energy-kcal"),fat:num("fat"),sat:num("saturated-fat"),sugars:num("sugars"),salt:num("salt"),proteins:num("proteins"),fiber:num("fiber")},
+    lv:p.nutrient_levels||{},
+    additives:(p.additives_tags||[]).map(t=>t.replace(/^en:/,"").toUpperCase()),
+    allergens:(p.allergens_tags||[]).map(t=>t.replace(/^[a-z]{2}:/,"").replace(/-/g," ")),
+    cats:(p.categories_tags||[]).slice(0,40)
+  };
+  offCache.set(code,out);return out;
+}
+const ALLERG={gluten:"gluten",milk:"leche",eggs:"huevo",nuts:"frutos secos",peanuts:"cacahuete",soybeans:"soja",fish:"pescado",crustaceans:"crustáceos",molluscs:"moluscos",celery:"apio",mustard:"mostaza","sesame seeds":"sésamo","sulphur dioxide and sulphites":"sulfitos",lupin:"altramuz"};
+function fmtNum(v,dec){if(v==null)return"–";return v.toFixed(dec).replace(".",",")}
+function lvColor(l){return l==="low"?"var(--good)":l==="moderate"?"var(--mid)":l==="high"?"var(--bad)":"var(--line)"}
+function infoHtml(o,fallbackName){
+  if(!o)return `<h3 id="pTitle">${esc(fallbackName||"Producto")}</h3>`;
+  const nsBox=o.ns?`<span class="big" style="background:${NS_COL[o.ns]}">${o.ns}</span>`:`<span class="big na">Sin dato</span>`;
+  const novaBox=o.nova?`<span class="big" style="background:${NOVA_COL[o.nova]}">${o.nova}</span><span class="d">${NOVA_TXT[o.nova]}</span>`:`<span class="big na">Sin dato</span>`;
+  const ecoBox=o.eco?`<span class="big" style="background:${NS_COL[o.eco]}">${o.eco}</span>`:`<span class="big na">Sin dato</span>`;
+  const rowsLv=[["fat","Grasas",o.n.fat,1],["saturated-fat","Grasas saturadas",o.n.sat,1],["sugars","Azúcares",o.n.sugars,1],["salt","Sal",o.n.salt,2]];
+  const rowsOther=[["Energía",o.n.kcal==null?"–":Math.round(o.n.kcal)+" kcal"],["Proteínas",fmtNum(o.n.proteins,1)+(o.n.proteins==null?"":" g")],["Fibra",fmtNum(o.n.fiber,1)+(o.n.fiber==null?"":" g")]];
+  const allerg=o.allergens.map(a=>ALLERG[a]||a);
+  return `<div class="prod">${o.img?`<img src="${esc(o.img)}" alt="" referrerpolicy="no-referrer">`:""}
+    <div class="t"><h3 id="pTitle">${esc(o.name||fallbackName||"Producto sin nombre")}</h3><span class="brand">${esc([o.brand,o.quantity].filter(Boolean).join(" · "))}</span><span class="src">EAN ${esc(o.code)}</span></div></div>
+  <div class="scores">
+    <div class="score"><small>Nutri-Score</small>${nsBox}</div>
+    <div class="score"><small>Procesado</small>${novaBox}</div>
+    <div class="score"><small>Green-Score</small>${ecoBox}</div>
+  </div>
+  <div class="nutr"><h4>Por 100 g / 100 ml</h4>
+    ${rowsOther.map(([l,v])=>`<div class="r"><span class="l">${l}</span><span class="v">${v}</span><span class="lv"></span></div>`).join("")}
+    ${rowsLv.map(([k,l,v,dec])=>{const lev=o.lv[k];return `<div class="r"><span class="dot" style="background:${lvColor(lev)}"></span><span class="l">${l}</span><span class="v">${fmtNum(v,dec)}${v==null?"":" g"}</span><span class="lv">${LV_TXT[lev]||""}</span></div>`}).join("")}
+  </div>
+  ${o.additives.length?`<div class="field"><label>Aditivos (${o.additives.length})</label><div class="tags">${o.additives.map(a=>`<span class="tag">${esc(a)}</span>`).join("")}</div></div>`:`<div class="src">Sin aditivos registrados.</div>`}
+  ${allerg.length?`<div class="field"><label>Alérgenos</label><div class="tags">${allerg.map(a=>`<span class="tag warn">${esc(a)}</span>`).join("")}</div></div>`:""}
+  <div class="src">Fuente: <a href="https://es.openfoodfacts.org/producto/${esc(o.code)}" target="_blank" rel="noopener">ficha en Open Food Facts</a>. Los datos los aporta la comunidad y pueden estar incompletos.</div>`;
+}
+
+/* ================= hoja de producto ================= */
+let cur=null; // {id, off, code, photo}
+function setStatus(t,err){const s=$("pStatus");s.textContent=t||"";s.classList.toggle("err",!!err);s.hidden=!t}
+function showPhoto(src){const im=$("pPhoto");if(src){im.src=src;im.hidden=false;$("pPhotoDel").hidden=false}else{im.hidden=true;im.removeAttribute("src");$("pPhotoDel").hidden=true}}
+function openSheet({id,off,code,notFound}){
+  const existing=id?items[id]:null;
+  cur={id:id||null,off:existing?existing.off:(off||null),code:existing?existing.barcode:(code||""),photo:existing?existing.photo||"":""};
+  const o=cur.off;
+  $("pInfo").innerHTML=infoHtml(o,existing?existing.name:"");
+  if(existing){
+    $("fName").value=existing.name;$("fQty").value=existing.qty;$("fUnit").value=existing.unit||"ud";
+    $("fCat").value=CAT_NAMES.includes(existing.cat)?existing.cat:"Otros";$("fPref").value=existing.pref||"";$("fNotes").value=existing.notes||"";
+    $("pSave").textContent="Guardar";setStatus("");
+  }else{
+    const name=o?(o.name||""):"";
+    $("fName").value=name;$("fQty").value=1;$("fUnit").value="ud";
+    $("fCat").value=o?catFromOff(o.cats,name):"Otros";
+    $("fPref").value=o?[o.brand,o.quantity].filter(Boolean).join(", "):"";$("fNotes").value="";
+    $("pSave").textContent="Añadir a la lista";
+    if(notFound)setStatus(`El código ${code} no está en Open Food Facts. Escribe el nombre y añádelo igualmente.`);
+    else{const dup=Object.entries(items).find(([,d])=>d.barcode&&d.barcode===cur.code);
+      setStatus(dup?`Ya lo tienes en la lista (${fmtQty(dup[1])}). Si lo añades, se suma la cantidad.`:"")}
+  }
+  showPhoto(cur.photo);
+  $("pDelete").hidden=!existing;$("pDelConfirm").hidden=true;$("pAgain").hidden=!!existing;
+  $("pScrim").hidden=false;$("pScrim").querySelector(".sheet").scrollTop=0;
+  if(!existing&&!$("fName").value)setTimeout(()=>$("fName").focus(),60);
+}
+function closeSheet(){cur=null;$("pScrim").hidden=true}
+$("pCancel").addEventListener("click",closeSheet);
+$("pScrim").addEventListener("click",e=>{if(e.target===$("pScrim"))closeSheet()});
+$("pAgain").addEventListener("click",()=>{closeSheet();openScanner()});
+$("pForm").addEventListener("submit",e=>{
+  e.preventDefault();if(!cur)return;
+  const name=$("fName").value.trim();if(!name){setStatus("Escribe el nombre del producto.",true);return}
+  const q=parseFloat(String($("fQty").value).replace(",","."));const qty=Number.isFinite(q)&&q>0?q:1;
+  const base={name,qty,unit:$("fUnit").value,cat:$("fCat").value,pref:$("fPref").value.trim(),notes:$("fNotes").value.trim(),barcode:cur.code||"",photo:cur.photo||"",off:cur.off||null};
+  if(cur.id){setItem(cur.id,Object.assign({},items[cur.id],base))}
+  else{
+    const dup=cur.code?Object.entries(items).find(([,d])=>d.barcode===cur.code):null;
+    if(dup){const [did,d]=dup;setItem(did,Object.assign({},d,{qty:(Number(d.qty)||0)+qty,checked:false,photo:base.photo||d.photo}))}
+    else setItem(newId(),Object.assign(base,{checked:false,createdAt:Date.now()}));
+  }
+  closeSheet();toast("Añadido a la lista");
+});
+$("pDelete").addEventListener("click",()=>{$("pDelConfirm").hidden=false});
+$("pDelNo").addEventListener("click",()=>{$("pDelConfirm").hidden=true});
+$("pDelYes").addEventListener("click",()=>{if(cur&&cur.id){const id=cur.id;closeSheet();delItem(id)}});
+$("pPhotoBtn").addEventListener("click",()=>{$("photoFile").value="";$("photoFile").click()});
+$("pPhotoDel").addEventListener("click",()=>{if(cur){cur.photo="";showPhoto("")}});
+$("photoFile").addEventListener("change",async e=>{
+  const f=e.target.files&&e.target.files[0];if(!f||!cur)return;
+  try{cur.photo=await shrink(f,720,0.72);showPhoto(cur.photo)}catch(err){setStatus("No se ha podido leer la foto.",true)}
+});
+function shrink(file,max,q){return new Promise((res,rej)=>{const u=URL.createObjectURL(file);const i=new Image();i.onload=()=>{const s=Math.min(1,max/Math.max(i.naturalWidth,i.naturalHeight));const c=document.createElement("canvas");c.width=Math.round(i.naturalWidth*s);c.height=Math.round(i.naturalHeight*s);c.getContext("2d").drawImage(i,0,0,c.width,c.height);URL.revokeObjectURL(u);res(c.toDataURL("image/jpeg",q))};i.onerror=()=>{URL.revokeObjectURL(u);rej()};i.src=u})}
+
+/* ================= escáner ================= */
+let stream=null,reader=null,detector=null,loopTimer=null,scanning=false,handling=false,torchOn=false;
+function scMsg(t){$("scMsg").textContent=t}
+async function openScanner(){
+  $("scanner").hidden=false;$("manualCode").value="";scMsg("Apunta al código de barras");handling=false;scanning=true;
+  $("scTorch").hidden=true;torchOn=false;
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){scMsg("Este navegador no deja usar la cámara. Escribe el número del código.");return}
+  if(!window.isSecureContext){scMsg("La cámara solo funciona si la página se abre con https://. Escribe el número del código.");return}
+  try{
+    if("BarcodeDetector" in window){
+      const fmts=await BarcodeDetector.getSupportedFormats().catch(()=>[]);
+      if(fmts.includes("ean_13")){detector=new BarcodeDetector({formats:["ean_13","ean_8","upc_a","upc_e"].filter(f=>fmts.includes(f))})}
+    }
+    if(detector){
+      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720}},audio:false});
+      const v=$("video");v.srcObject=stream;await v.play().catch(()=>{});
+      setupTorch();
+      const tick=async()=>{if(!scanning)return;try{if(v.readyState>=2){const r=await detector.detect(v);if(r&&r.length){onCode(r[0].rawValue);return}}}catch(e){}loopTimer=setTimeout(tick,180)};
+      tick();
+    }else if(window.ZXing){
+      const Z=window.ZXing;const hints=new Map();
+      hints.set(Z.DecodeHintType.POSSIBLE_FORMATS,[Z.BarcodeFormat.EAN_13,Z.BarcodeFormat.EAN_8,Z.BarcodeFormat.UPC_A,Z.BarcodeFormat.UPC_E]);
+      reader=new Z.BrowserMultiFormatReader(hints,250);
+      await reader.decodeFromConstraints({video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720}},audio:false},$("video"),(res)=>{if(res&&scanning)onCode(res.getText())});
+      stream=$("video").srcObject;setupTorch();
+    }else{
+      scMsg("No se ha podido cargar el lector de códigos. Comprueba la conexión o escribe el número.");
+    }
+  }catch(e){
+    const name=e&&e.name;
+    scMsg(name==="NotAllowedError"?"Sin permiso para usar la cámara. Actívalo en los ajustes del navegador o escribe el número.":"No se ha podido abrir la cámara. Escribe el número del código.");
+  }
+}
+function setupTorch(){
+  try{const t=stream&&stream.getVideoTracks()[0];const caps=t&&t.getCapabilities?t.getCapabilities():{};if(caps&&caps.torch)$("scTorch").hidden=false}catch(e){}
+}
+$("scTorch").addEventListener("click",async()=>{try{const t=stream.getVideoTracks()[0];torchOn=!torchOn;await t.applyConstraints({advanced:[{torch:torchOn}]})}catch(e){}});
+function stopScanner(){
+  scanning=false;clearTimeout(loopTimer);
+  try{if(reader)reader.reset()}catch(e){}reader=null;detector=null;
+  try{if(stream)stream.getTracks().forEach(t=>t.stop())}catch(e){}stream=null;
+  const v=$("video");try{v.pause()}catch(e){}v.srcObject=null;
+  $("scanner").hidden=true;
+}
+$("scClose").addEventListener("click",stopScanner);
+$("manualForm").addEventListener("submit",e=>{e.preventDefault();const c=$("manualCode").value.replace(/\D/g,"");if(c.length<6){scMsg("Escribe el número completo que hay bajo las barras.");return}onCode(c)});
+async function onCode(code){
+  if(handling)return;handling=true;scanning=false;clearTimeout(loopTimer);
+  try{if(navigator.vibrate)navigator.vibrate(60)}catch(e){}
+  scMsg(`Código ${code}: buscando el producto…`);
+  try{
+    const o=await lookup(code);
+    stopScanner();
+    if(o)openSheet({off:o,code});else openSheet({code,notFound:true});
+  }catch(e){
+    stopScanner();
+    openSheet({code,notFound:false});
+    setStatus(navigator.onLine===false?"Sin conexión: no se ha podido consultar la ficha. Puedes añadirlo igualmente.":"No se ha podido consultar Open Food Facts ahora mismo. Puedes añadirlo igualmente.",true);
+  }
+}
+$("scanBtn").addEventListener("click",openScanner);
+
+/* ================= mensajes, compartir, copias ================= */
+function msg(title,body,buttons){
+  $("mTitle").textContent=title;$("mBody").innerHTML=body;const a=$("mActions");a.innerHTML="";
+  buttons.forEach(([label,cls,fn])=>{const b=document.createElement("button");b.type="button";b.className="btn "+cls;b.textContent=label;b.addEventListener("click",fn);a.appendChild(b)});
+  $("mScrim").hidden=false;
+}
+const closeMsg=()=>{$("mScrim").hidden=true};
+$("mScrim").addEventListener("click",e=>{if(e.target===$("mScrim"))closeMsg()});
+let toastT=null;
+function toast(t){let el=document.getElementById("toast");if(!el){el=document.createElement("div");el.id="toast";el.setAttribute("role","status");el.style.cssText="position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-weight:600;z-index:40;max-width:90vw;text-align:center";document.body.appendChild(el)}el.textContent=t;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{el.hidden=true},2200)}
+function listText(){
+  const pend=Object.values(items).filter(d=>!d.checked);
+  const parts=CAT_NAMES.map(c=>{const g=pend.filter(d=>(CAT_NAMES.includes(d.cat)?d.cat:"Otros")===c);if(!g.length)return"";
+    return c.toUpperCase()+"\n"+g.map(d=>`- ${d.name} ${fmtQty(d)}${d.pref?` (${d.pref})`:""}${d.barcode?` [EAN ${d.barcode}]`:""}`).join("\n")}).filter(Boolean);
+  return parts.length?"Lista de la compra\n\n"+parts.join("\n\n"):"";
+}
+$("shareBtn").addEventListener("click",async()=>{
+  const t=listText();if(!t){msg("Nada que enviar","<p>No hay productos por comprar.</p>",[["Vale","",closeMsg]]);return}
+  if(navigator.share){try{await navigator.share({title:"Lista de la compra",text:t});return}catch(e){if(e&&e.name==="AbortError")return}}
+  try{await navigator.clipboard.writeText(t);msg("Lista copiada","<p>Pégala en un mensaje o en el chat con Claude para que llene el carrito del súper.</p>",[["Vale","",closeMsg]])}
+  catch(e){msg("Copia la lista",`<textarea class="copybox" readonly id="copyArea">${esc(t)}</textarea>`,[["Cerrar","ghost",closeMsg]]);setTimeout(()=>{const a=$("copyArea");a.focus();a.select()},60)}
+});
+$("clearBtn").addEventListener("click",()=>{
+  const done=Object.keys(items).filter(id=>items[id].checked);
+  if(!done.length){msg("No hay nada marcado","<p>Marca los productos que ya tengas para quitarlos de la lista.</p>",[["Vale","",closeMsg]]);return}
+  msg(`¿Quitar ${done.length} ${done.length===1?"producto":"productos"}?`,"<p>Se borran de la lista los que están marcados como en el carrito.</p>",[["Cancelar","ghost",closeMsg],["Quitar","danger",()=>{done.forEach(id=>delete items[id]);persist();render();closeMsg()}]]);
+});
+$("exportBtn").addEventListener("click",async()=>{
+  const data=JSON.stringify({app:"lista-compra",version:1,exportedAt:new Date().toISOString(),items},null,0);
+  const fname=`lista-compra-${new Date().toISOString().slice(0,10)}.json`;
+  const blob=new Blob([data],{type:"application/json"});
+  try{const file=new File([blob],fname,{type:"application/json"});if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:"Copia de la lista"});return}}catch(e){if(e&&e.name==="AbortError")return}
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);
+});
+$("importBtn").addEventListener("click",()=>{$("importFile").value="";$("importFile").click()});
+$("importFile").addEventListener("change",async e=>{
+  const f=e.target.files&&e.target.files[0];if(!f)return;
+  let incoming=null;try{const j=JSON.parse(await f.text());incoming=j&&j.items&&typeof j.items==="object"?j.items:null}catch(err){}
+  if(!incoming){msg("Archivo no válido","<p>Elige un archivo de copia de seguridad hecho con esta app.</p>",[["Vale","",closeMsg]]);return}
+  const n=Object.keys(incoming).length;
+  msg("¿Restaurar la copia?",`<p>La copia tiene ${n} ${n===1?"producto":"productos"}. Se juntan con los que ya tienes; los repetidos se quedan con la versión de la copia.</p>`,[["Cancelar","ghost",closeMsg],["Restaurar","",()=>{Object.assign(items,incoming);persist();render();closeMsg();toast("Copia restaurada")}]]);
+});
+document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;if(!$("scanner").hidden)stopScanner();else if(!$("mScrim").hidden)closeMsg();else if(!$("pScrim").hidden)closeSheet()});
+document.addEventListener("visibilitychange",()=>{if(document.hidden&&!$("scanner").hidden)stopScanner()});
+
+loadAll().then(render);
+})();
+</script>
+</body>
+</html>
