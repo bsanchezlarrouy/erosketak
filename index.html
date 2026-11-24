@@ -237,7 +237,10 @@ h1{font-family:var(--font-display);font-weight:700;font-size:28px;line-height:1.
   <div class="frame" aria-hidden="true"></div>
   <div class="sc-top">
     <button class="btn" type="button" id="scClose">Cerrar</button>
-    <button class="btn" type="button" id="scTorch" hidden>Linterna</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn" type="button" id="scSwitch" hidden aria-label="Cambiar de cámara"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 8a2 2 0 0 1 2-2h2l2-2h6l2 2h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 12.5a3 3 0 0 1 5.2-2l.8.8M15 12.5a3 3 0 0 1-5.2 2l-.8-.8M15 9.5v1.8h-1.8M9 15.5v-1.8h1.8"/></svg>Cámara</button>
+      <button class="btn" type="button" id="scTorch" hidden>Linterna</button>
+    </div>
   </div>
   <div class="sc-bottom">
     <div class="sc-msg" id="scMsg">Apunta al código de barras</div>
@@ -923,47 +926,76 @@ function shrink(file,max,q){return new Promise((res,rej)=>{const u=URL.createObj
 /* ================= escáner ================= */
 let stream=null,reader=null,detector=null,loopTimer=null,scanning=false,handling=false,torchOn=false;
 function scMsg(t){$("scMsg").textContent=t}
+/* cámara elegida: se recuerda en cada dispositivo */
+const CAM_KEY="lista-compra-camara";
+let camId="";try{camId=localStorage.getItem(CAM_KEY)||""}catch(e){}
+let cams=[];
+function saveCam(){try{if(camId)localStorage.setItem(CAM_KEY,camId);else localStorage.removeItem(CAM_KEY)}catch(e){}}
+function videoConstraints(){return Object.assign(camId?{deviceId:{exact:camId}}:{facingMode:{ideal:"environment"}},{width:{ideal:1280},height:{ideal:720}})}
+async function listCams(){
+  try{cams=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==="videoinput"&&d.deviceId)}catch(e){cams=[]}
+  $("scSwitch").hidden=cams.length<2;
+}
 async function openScanner(){
-  $("scanner").hidden=false;$("manualCode").value="";scMsg("Apunta al código de barras");handling=false;scanning=true;
-  $("scTorch").hidden=true;torchOn=false;
+  $("scanner").hidden=false;$("manualCode").value="";scMsg("Apunta al código de barras");handling=false;
+  $("scTorch").hidden=true;$("scSwitch").hidden=true;
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){scMsg("Este navegador no deja usar la cámara. Escribe el número del código.");return}
   if(!window.isSecureContext){scMsg("La cámara solo funciona si la página se abre con https://. Escribe el número del código.");return}
+  await startCamera(false);
+}
+async function startCamera(retry){
+  scanning=true;torchOn=false;$("scTorch").hidden=true;
   try{
+    detector=null;
     if("BarcodeDetector" in window){
       const fmts=await BarcodeDetector.getSupportedFormats().catch(()=>[]);
       if(fmts.includes("ean_13")){detector=new BarcodeDetector({formats:["ean_13","ean_8","upc_a","upc_e"].filter(f=>fmts.includes(f))})}
     }
     if(detector){
-      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720}},audio:false});
-      const v=$("video");v.srcObject=stream;await v.play().catch(()=>{});
-      setupTorch();
-      const tick=async()=>{if(!scanning)return;try{if(v.readyState>=2){const r=await detector.detect(v);if(r&&r.length){onCode(r[0].rawValue);return}}}catch(e){}loopTimer=setTimeout(tick,180)};
+      stream=await navigator.mediaDevices.getUserMedia({video:videoConstraints(),audio:false});
+      if(!scanning||$("scanner").hidden){stream.getTracks().forEach(t=>t.stop());stream=null;return}
+      const v=$("video");v.srcObject=stream;v.play().catch(()=>{});
+      const det=detector;
+      const tick=async()=>{if(!scanning||detector!==det)return;try{if(v.readyState>=2){const r=await det.detect(v);if(r&&r.length&&scanning){onCode(r[0].rawValue);return}}}catch(e){}loopTimer=setTimeout(tick,180)};
       tick();
     }else if(window.ZXing){
       const Z=window.ZXing;const hints=new Map();
       hints.set(Z.DecodeHintType.POSSIBLE_FORMATS,[Z.BarcodeFormat.EAN_13,Z.BarcodeFormat.EAN_8,Z.BarcodeFormat.UPC_A,Z.BarcodeFormat.UPC_E]);
       reader=new Z.BrowserMultiFormatReader(hints,250);
-      await reader.decodeFromConstraints({video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720}},audio:false},$("video"),(res)=>{if(res&&scanning)onCode(res.getText())});
-      stream=$("video").srcObject;setupTorch();
+      await reader.decodeFromConstraints({video:videoConstraints(),audio:false},$("video"),(res)=>{if(res&&scanning)onCode(res.getText())});
+      stream=$("video").srcObject;
     }else{
-      scMsg("No se ha podido cargar el lector de códigos. Comprueba la conexión o escribe el número.");
+      scMsg("No se ha podido cargar el lector de códigos. Comprueba la conexión o escribe el número.");return;
     }
+    setupTorch();listCams();
   }catch(e){
     const name=e&&e.name;
+    if(camId&&!retry&&name!=="NotAllowedError"){camId="";saveCam();stopCamera();return startCamera(true)}   // la cámara guardada ya no existe: vuelve a la trasera
     scMsg(name==="NotAllowedError"?"Sin permiso para usar la cámara. Actívalo en los ajustes del navegador o escribe el número.":"No se ha podido abrir la cámara. Escribe el número del código.");
   }
 }
+$("scSwitch").addEventListener("click",async()=>{
+  if(cams.length<2)return;
+  let curId=camId;try{curId=stream.getVideoTracks()[0].getSettings().deviceId||camId}catch(e){}
+  const i=cams.findIndex(c=>c.deviceId===curId);
+  const next=cams[(i+1)%cams.length];
+  camId=next.deviceId;saveCam();
+  stopCamera();
+  const n=cams.indexOf(next)+1;
+  scMsg(`Cámara ${n} de ${cams.length}`+(next.label?` · ${next.label}`:""));
+  await startCamera(false);
+});
 function setupTorch(){
   try{const t=stream&&stream.getVideoTracks()[0];const caps=t&&t.getCapabilities?t.getCapabilities():{};if(caps&&caps.torch)$("scTorch").hidden=false}catch(e){}
 }
 $("scTorch").addEventListener("click",async()=>{try{const t=stream.getVideoTracks()[0];torchOn=!torchOn;await t.applyConstraints({advanced:[{torch:torchOn}]})}catch(e){}});
-function stopScanner(){
+function stopCamera(){
   scanning=false;clearTimeout(loopTimer);
   try{if(reader)reader.reset()}catch(e){}reader=null;detector=null;
   try{if(stream)stream.getTracks().forEach(t=>t.stop())}catch(e){}stream=null;
   const v=$("video");try{v.pause()}catch(e){}v.srcObject=null;
-  $("scanner").hidden=true;
 }
+function stopScanner(){stopCamera();$("scanner").hidden=true}
 $("scClose").addEventListener("click",stopScanner);
 $("manualForm").addEventListener("submit",e=>{e.preventDefault();const c=$("manualCode").value.replace(/\D/g,"");if(c.length<6){scMsg("Escribe el número completo que hay bajo las barras.");return}onCode(c)});
 async function onCode(code){
