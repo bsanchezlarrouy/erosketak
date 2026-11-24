@@ -52,6 +52,11 @@ h1{font-family:var(--font-display);font-weight:700;font-size:28px;line-height:1.
 .help{font-size:14px;color:var(--muted);margin:0}
 .help ol{margin:6px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
 .help code{font-size:13px;background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.box h4{margin:0;font-family:var(--font-display);font-size:16px}
+.qr{align-self:center;background:#fff;padding:12px;border-radius:12px;line-height:0}
+.qr img,.qr canvas{width:220px;height:220px}
+.warn{font-size:13px;color:var(--bad)}
 .btn{border:0;border-radius:12px;padding:12px 16px;font-weight:600;background:var(--accent);color:var(--accent-ink);display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
 .btn.ghost{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
 .btn.scan{background:var(--scan);color:var(--scan-ink);font-size:18px;padding:18px}
@@ -80,6 +85,8 @@ h1{font-family:var(--font-display);font-weight:700;font-size:28px;line-height:1.
 .ns{display:inline-grid;place-items:center;min-width:22px;height:20px;padding:0 5px;border-radius:5px;color:#fff;font-weight:700;font-size:12px;text-transform:uppercase;font-family:var(--font-display)}
 .empty{text-align:center;color:var(--muted);padding:28px 16px;border:1px dashed var(--line);border-radius:12px;display:flex;flex-direction:column;gap:6px}
 .empty strong{color:var(--ink);font-family:var(--font-display);font-size:18px}
+.readd{width:40px;height:40px;border-radius:10px;border:0;background:var(--accent);color:var(--accent-ink);font-size:24px;font-weight:600;line-height:1;flex:none;display:grid;place-items:center;padding:0}
+.readd.on{background:var(--surface);color:var(--muted);border:1px solid var(--line);font-size:13px;width:auto;padding:0 8px}
 .tools{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .foot{font-size:13px;color:var(--muted);text-align:center}
 .foot a{color:inherit}
@@ -141,7 +148,7 @@ h1{font-family:var(--font-display);font-weight:700;font-size:28px;line-height:1.
   <header>
     <div class="hgroup">
       <h1>Lista de la compra</h1>
-      <button class="sync" type="button" id="syncBtn"><span class="led"></span><span id="syncTxt">Solo en este móvil · Conectar con GitHub</span></button>
+      <button class="sync" type="button" id="syncBtn"><span class="led"></span><span id="syncTxt">Solo en este dispositivo · Entrar con Google</span></button>
     </div>
     <span class="count" id="count"></span>
   </header>
@@ -153,7 +160,9 @@ h1{font-family:var(--font-display);font-weight:700;font-size:28px;line-height:1.
 
   <form class="add" id="addForm" autocomplete="off">
     <label for="quick" class="sr">Añadir producto</label>
-    <input id="quick" placeholder="O escribe: 2 kg naranjas" enterkeyhint="done">
+    <input id="quick" placeholder="O escribe: 2 kg naranjas" enterkeyhint="done" list="habList">
+    <datalist id="habList"></datalist>
+    <button class="btn ghost" type="button" id="searchBtn" aria-label="Buscar productos a la venta en España" title="Buscar productos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
     <button class="btn" type="submit">Añadir</button>
   </form>
 
@@ -161,6 +170,7 @@ h1{font-family:var(--font-display);font-weight:700;font-size:28px;line-height:1.
     <button class="chip" type="button" data-f="pending" aria-pressed="true">Por comprar</button>
     <button class="chip" type="button" data-f="all" aria-pressed="false">Todo</button>
     <button class="chip" type="button" data-f="done" aria-pressed="false">En el carrito</button>
+    <button class="chip" type="button" data-f="habituales" aria-pressed="false" id="chipHab">Habituales</button>
   </div>
 
   <main id="list" aria-live="polite"></main>
@@ -176,30 +186,49 @@ h1{font-family:var(--font-display);font-weight:700;font-size:28px;line-height:1.
   <p class="foot">Datos de productos: <a href="https://es.openfoodfacts.org" target="_blank" rel="noopener">Open Food Facts</a> (ODbL).</p>
 </div>
 
-<!-- Ajustes de sincronización -->
+<!-- Ajustes: lista compartida en Google Sheets -->
 <div class="scrim" id="gScrim" hidden>
-  <form class="sheet" id="gForm" role="dialog" aria-modal="true" aria-labelledby="gTitle" autocomplete="off">
-    <h3 id="gTitle">Guardar la lista en GitHub</h3>
-    <div class="help">La lista se guarda en el archivo <code>lista.json</code> de un repositorio tuyo, mejor privado, y las fotos en su carpeta <code>fotos</code>. Así la ves igual en cualquier móvil o navegador.
-      <ol>
-        <li>En GitHub, crea un token: Settings → Developer settings → Personal access tokens → <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Fine-grained tokens</a>.</li>
-        <li>En «Repository access» elige solo el repositorio de datos y en «Permissions → Contents» pon <b>Read and write</b>.</li>
-        <li>Copia el token y pégalo aquí. Se guarda solo en este navegador; repítelo en cada dispositivo.</li>
-      </ol>
-    </div>
-    <div class="row">
-      <div class="field"><label for="gOwner">Usuario de GitHub</label><input id="gOwner" autocapitalize="off" spellcheck="false" value="bsanchezlarrouy"></div>
-      <div class="field"><label for="gRepo">Repositorio de datos</label><input id="gRepo" autocapitalize="off" spellcheck="false" value="erosketak-datuak"></div>
-    </div>
-    <div class="field"><label for="gToken">Token</label><input id="gToken" type="password" autocapitalize="off" spellcheck="false" placeholder="github_pat_…"></div>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="gTitle">
+    <h3 id="gTitle">Lista compartida</h3>
     <div class="status" id="gStatus" hidden></div>
+    <div class="box" id="gStepLogin">
+      <h4>Entrar con Google</h4>
+      <div class="help" id="gLoginHelp">La lista se guarda en una hoja de Google Sheets de tu Drive. Solo pueden entrar las cuentas de Google con las que compartas esa hoja: como <b>Editor</b> pueden cambiarla y como <b>Lector</b> solo verla.</div>
+      <button class="btn" type="button" id="gLogin">Entrar con Google</button>
+      <button class="btn ghost" type="button" id="gRetry" hidden>Ya me la han compartido: comprobar otra vez</button>
+    </div>
+    <div class="box" id="gStepSheet" hidden>
+      <h4>Elegir la hoja</h4>
+      <div class="help">Si es el primer dispositivo, crea la hoja. Si ya existe, pega su enlace o abre el enlace de la app que te hayan pasado.</div>
+      <button class="btn" type="button" id="gCreate">Crear la hoja «Lista de la compra»</button>
+      <div class="field"><label for="gSheetUrl">Enlace de una hoja que ya existe</label><input id="gSheetUrl" autocapitalize="off" spellcheck="false" placeholder="https://docs.google.com/spreadsheets/d/…"></div>
+      <button class="btn ghost" type="button" id="gUseSheet">Usar esta hoja</button>
+    </div>
+    <div class="box" id="gStepOk" hidden>
+      <h4>Conectado</h4>
+      <div class="help" id="gWho"></div>
+      <a class="btn ghost" id="gOpenSheet" href="#" target="_blank" rel="noopener">Abrir la hoja en Google Sheets</a>
+      <button class="btn ghost" type="button" id="gSyncNow">Sincronizar ahora</button>
+    </div>
+    <div class="box" id="gShare" hidden>
+      <h4>Añadir a otra persona o dispositivo</h4>
+      <ol class="help">
+        <li>Abre la hoja, pulsa <b>Compartir</b> y añade su cuenta de Google como <b>Editor</b> (o <b>Lector</b> si solo debe verla).</li>
+        <li>Mientras la app de Google esté en modo de prueba, añade también ese correo en Google Cloud → Público → Usuarios de prueba.</li>
+        <li>En su móvil o tablet, escanea este QR o abre el enlace y entra con su cuenta.</li>
+      </ol>
+      <button class="btn" type="button" id="gShowQr">Mostrar QR y enlace</button>
+      <div class="qr" id="gQr" hidden></div>
+      <button class="btn ghost" type="button" id="gCopyLink" hidden>Copiar enlace</button>
+      <div class="help">El enlace no da acceso por sí solo: si su cuenta no tiene permiso en la hoja, Google no le deja entrar.</div>
+    </div>
+    <div class="field"><label for="gDevice">Nombre de este dispositivo</label><input id="gDevice" placeholder="p. ej. Móvil de Ana, Tablet cocina" maxlength="30"></div>
     <div class="actions">
       <button class="btn ghost" type="button" id="gCancel">Cerrar</button>
-      <button class="btn" type="submit" id="gSave">Conectar</button>
+      <button class="btn" type="button" id="gSaveName">Guardar nombre</button>
     </div>
-    <button class="btn ghost" type="button" id="gSyncNow" hidden>Sincronizar ahora</button>
-    <button class="btn ghost" type="button" id="gOff" style="color:var(--danger)" hidden>Desconectar este dispositivo</button>
-  </form>
+    <button class="btn ghost" type="button" id="gOff" style="color:var(--danger)" hidden>Cerrar sesión en este dispositivo</button>
+  </div>
 </div>
 
 <!-- Escáner -->
@@ -244,12 +273,23 @@ h1{font-family:var(--font-display);font-weight:700;font-size:28px;line-height:1.
       <button class="btn" type="submit" id="pSave">Añadir a la lista</button>
     </div>
     <button class="btn ghost" type="button" id="pAgain" hidden>Escanear otro</button>
-    <button class="btn ghost" type="button" id="pDelete" style="color:var(--danger)" hidden>Borrar de la lista</button>
+    <button class="btn ghost" type="button" id="pDelete" style="color:var(--danger)" hidden>Quitar de la lista</button>
     <div class="confirm" id="pDelConfirm" hidden>
-      <span>¿Borrar este producto de la lista?</span>
-      <div class="actions"><button class="btn ghost" type="button" id="pDelNo">No</button><button class="btn danger" type="button" id="pDelYes">Sí, borrar</button></div>
+      <span id="pDelMsg">¿Quitar este producto de la lista?</span>
+      <div class="actions"><button class="btn ghost" type="button" id="pDelNo">No</button><button class="btn danger" type="button" id="pDelYes">Sí</button></div>
     </div>
   </form>
+</div>
+
+<!-- Resultados de búsqueda -->
+<div class="scrim" id="sScrim" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sTitle">
+    <h3 id="sTitle">Buscar productos</h3>
+    <div class="status" id="sStatus"></div>
+    <div id="sList" class="aisle"></div>
+    <div class="src">Productos a la venta en España según <a href="https://es.openfoodfacts.org" target="_blank" rel="noopener">Open Food Facts</a>. Toca uno para ver su ficha y añadirlo.</div>
+    <div class="actions"><button class="btn ghost" type="button" id="sClose">Cerrar</button></div>
+  </div>
 </div>
 
 <!-- Mensajes -->
@@ -261,6 +301,7 @@ h1{font-family:var(--font-display);font-weight:700;font-size:28px;line-height:1.
   </div>
 </div>
 
+<script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script>
 (function(){
@@ -296,87 +337,141 @@ async function loadAll(){
 }
 const newId=()=>"i"+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const live=()=>Object.entries(items).filter(([,d])=>d&&!d.deleted);
+const active=()=>live().filter(([,d])=>!d.archived);     // en la lista de la compra
+const archived=()=>live().filter(([,d])=>d.archived);    // habituales, para volver a añadir
+const norm=s=>String(s||"").toLowerCase().normalize("NFD").replace(/\p{M}/gu,"").replace(/\s+/g," ").trim();
+function findHab(barcode,name){
+  const hs=archived();
+  return (barcode&&hs.find(([,d])=>d.barcode===barcode))||(name&&hs.find(([,d])=>norm(d.name)===norm(name)))||null;
+}
+function readd(id,patch){const d=items[id];if(!d)return;setItem(id,Object.assign({},d,{archived:false,checked:false},deviceName?{addedBy:deviceName}:{},patch||{}))}
 const stamp=d=>(d&&(d.updatedAt||d.createdAt))||0;
-function setItem(id,d){items[id]=Object.assign({},d,{updatedAt:Date.now()});persist();render();scheduleSync()}
-function delItem(id){const d=items[id];if(d&&d.photoPath)deleteRemotePhoto(d.photoPath);items[id]={deleted:true,updatedAt:Date.now()};persist();render();scheduleSync()}
+const DEV_KEY="lista-compra-dispositivo";
+let deviceName="";try{deviceName=localStorage.getItem(DEV_KEY)||""}catch(e){}
+function setItem(id,d){const isNew=!items[id]||items[id].deleted;items[id]=Object.assign({},d,{updatedAt:Date.now()},isNew&&deviceName&&!d.addedBy?{addedBy:deviceName}:{});persist();render();scheduleSync()}
+function delItem(id){items[id]={deleted:true,updatedAt:Date.now()};persist();render();scheduleSync()}
 
-/* ================= sincronización con GitHub ================= */
-const CFG_KEY="lista-compra-github",DATA_PATH="lista.json";
-let gh=null;try{gh=JSON.parse(localStorage.getItem(CFG_KEY)||"null")}catch(e){gh=null}
-function saveCfg(c){gh=c;try{if(c)localStorage.setItem(CFG_KEY,JSON.stringify(c));else localStorage.removeItem(CFG_KEY)}catch(e){}}
-const b64enc=s=>{const by=new TextEncoder().encode(s);let bin="";for(let i=0;i<by.length;i+=0x8000)bin+=String.fromCharCode.apply(null,by.subarray(i,i+0x8000));return btoa(bin)};
-const b64dec=b=>new TextDecoder().decode(Uint8Array.from(atob(String(b).replace(/\s/g,"")),c=>c.charCodeAt(0)));
-class GhError extends Error{constructor(status,msg){super(msg);this.status=status}}
-async function ghFetch(path,{method="GET",body,accept}={},cfg=gh){
-  const headers={"Authorization":"Bearer "+cfg.token,"Accept":accept||"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"};
-  if(body)headers["Content-Type"]="application/json";
-  const base=`https://api.github.com/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}`;
-  return fetch(base+(path?"/"+path:""),{method,headers,body:body?JSON.stringify(body):undefined,cache:"no-store"});
+/* ================= sincronización con Google Sheets =================
+   La página es pública; los datos viven en una hoja de Google del usuario.
+   Cada persona entra con su cuenta de Google y solo accede si la hoja está compartida con ella. */
+const CLIENT_ID=String((window.LISTA_CONFIG&&window.LISTA_CONFIG.googleClientId)||"PON_AQUI_TU_ID");   // se pone en config.js
+const SCOPES="openid email profile https://www.googleapis.com/auth/spreadsheets";
+const AUTH_KEY="lista-compra-google",SHEET_KEY="lista-compra-hoja",TAB="Productos",PHOTO_TAB="Fotos";
+const HEAD=["id","Producto","Cantidad","Unidad","Pasillo","Preferencia","Notas","Código de barras","En el carrito","Habitual","Veces comprado","Añadido por","Creado","Actualizado","Borrado","Ficha (no tocar)","Foto (no tocar)"];
+const jget=k=>{try{return JSON.parse(localStorage.getItem(k)||"null")}catch(e){return null}};
+const jset=(k,v)=>{try{if(v==null)localStorage.removeItem(k);else localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+let auth=jget(AUTH_KEY);                 // {token, exp, email, name}
+let sheetId=(jget(SHEET_KEY)||{}).id||"";
+const configured=()=>/\.apps\.googleusercontent\.com$/.test(CLIENT_ID)&&!CLIENT_ID.startsWith("PON_");
+const tokenOk=()=>!!(auth&&auth.token&&auth.exp>Date.now()+60000);
+const linked=()=>!!(auth&&auth.email&&sheetId);
+function signIn(mode){
+  if(!configured()){openSettings();gStatus("Falta poner en la app el ID de cliente de Google.",true);return}
+  const st=Math.random().toString(36).slice(2)+Date.now().toString(36);
+  try{localStorage.setItem("oauth-state",st)}catch(e){}
+  const p=new URLSearchParams({client_id:CLIENT_ID,redirect_uri:location.origin+location.pathname,response_type:"token",scope:SCOPES,include_granted_scopes:"true",state:st});
+  if(mode==="none")p.set("prompt","none");else if(mode==="select")p.set("prompt","select_account");
+  if(mode!=="select"&&auth&&auth.email)p.set("login_hint",auth.email);
+  location.href="https://accounts.google.com/o/oauth2/v2/auth?"+p.toString();
 }
-function ghMsg(status){
-  if(status===401)return "GitHub no acepta el token: puede estar mal copiado o caducado.";
-  if(status===403)return "El token no tiene permiso para escribir: en «Contents» debe poner «Read and write».";
-  if(status===404)return "No encuentro el repositorio, o el token no tiene acceso a él.";
-  if(status===0)return "Sin conexión con GitHub.";
-  return "GitHub ha respondido con un error ("+status+").";
+async function handleOAuthReturn(){
+  if(!/(^#|&)(access_token|error)=/.test(location.hash))return null;
+  const q=new URLSearchParams(location.hash.slice(1));
+  try{history.replaceState(null,"",location.pathname+location.search)}catch(e){location.hash=""}
+  let st=null;try{st=localStorage.getItem("oauth-state");localStorage.removeItem("oauth-state")}catch(e){}
+  if(!st||q.get("state")!==st)return {error:"state"};
+  if(q.get("error"))return {error:q.get("error")};
+  const token=q.get("access_token"),exp=Date.now()+(parseInt(q.get("expires_in"),10)||3600)*1000;
+  let info={};
+  try{const r=await fetch("https://openidconnect.googleapis.com/v1/userinfo",{headers:{Authorization:"Bearer "+token}});if(r.ok)info=await r.json()}catch(e){}
+  const changed=auth&&auth.email&&info.email&&auth.email!==info.email;
+  auth={token,exp,email:info.email||(auth&&auth.email)||"",name:info.given_name||info.name||(auth&&auth.name)||""};
+  jset(AUTH_KEY,auth);
+  if(changed){remoteRows=0}
+  if(!deviceName&&auth.name)saveDevice(auth.name);
+  return {ok:true};
 }
-const encPath=p=>p.split("/").map(encodeURIComponent).join("/");
+class ApiError extends Error{constructor(status,msg,write){super(msg);this.status=status;this.write=!!write}}
+let sheetState=""; // "", "ok" o "denied"
+function apiMsg(status,write){
+  if(status===401)return "La sesión de Google ha caducado. Toca aquí para entrar de nuevo.";
+  if(status===403)return write?"Tu cuenta solo puede ver la lista (permiso de lector). Pide permiso de Editor para cambiarla.":"Tu cuenta ("+((auth&&auth.email)||"")+") no tiene acceso a esta hoja. Pide que te la compartan.";
+  if(status===404)return "No encuentro la hoja. Comprueba el enlace o crea una nueva.";
+  if(status===0)return navigator.onLine===false?"Sin conexión: se guardará en Google cuando vuelvas a tener internet.":"No se ha podido conectar con Google.";
+  return "Google ha respondido con un error ("+status+").";
+}
+async function api(url,{method="GET",body}={},write=false){
+  if(!tokenOk())throw new ApiError(401,apiMsg(401));
+  let r;
+  try{r=await fetch(url,{method,headers:Object.assign({Authorization:"Bearer "+auth.token},body?{"Content-Type":"application/json"}:{}),body:body?JSON.stringify(body):undefined,cache:"no-store"})}
+  catch(e){throw new ApiError(0,apiMsg(0))}
+  if(r.status===401){auth.exp=0;jset(AUTH_KEY,auth)}
+  if(!r.ok)throw new ApiError(r.status,apiMsg(r.status,write),write);
+  return r.status===204?null:r.json();
+}
+const SHEETS="https://sheets.googleapis.com/v4/spreadsheets/";
+const rng=a=>encodeURIComponent(a);
+const toISO=ms=>ms?new Date(ms).toISOString():"";
+const fromISO=s=>{if(typeof s==="number")return s;const t=Date.parse(s||"");return isNaN(t)?0:t};
+const yes=v=>v===true||/^(true|verdadero|s[ií]|x|1)$/i.test(String(v==null?"":v).trim());
+function toRow(id,d){
+  if(d.deleted)return [id,"","","","","","","","","","","","",toISO(d.updatedAt),"sí","",""];
+  return [id,d.name||"",Number(d.qty)||1,d.unit||"ud",d.cat||"Otros",d.pref||"",d.notes||"",d.barcode||"",!!d.checked,!!d.archived,d.timesBought||0,d.addedBy||"",toISO(d.createdAt),toISO(d.updatedAt),"",d.off?JSON.stringify(d.off):"",d.photoKey||""];
+}
+function fromRow(r){
+  const g=i=>r[i]==null?"":r[i];
+  const id=String(g(0)).trim();if(!id||id==="id")return null;
+  const upd=fromISO(g(13));
+  if(yes(g(14)))return [id,{deleted:true,updatedAt:upd}];
+  let off=null;try{off=g(15)?JSON.parse(g(15)):null}catch(e){off=null}
+  return [id,{name:String(g(1)),qty:Number(String(g(2)).replace(",","."))||1,unit:String(g(3)||"ud"),cat:String(g(4)||"Otros"),pref:String(g(5)),notes:String(g(6)),barcode:String(g(7)),checked:yes(g(8)),archived:yes(g(9)),timesBought:Number(g(10))||0,addedBy:String(g(11)),createdAt:fromISO(g(12)),updatedAt:upd,off,photoKey:String(g(16)),photo:""}];
+}
+let remoteRows=0;
 async function pullRemote(){
-  const r=await ghFetch("contents/"+DATA_PATH);
-  if(r.status===404)return {items:{},sha:null};
-  if(!r.ok)throw new GhError(r.status,ghMsg(r.status));
-  const j=await r.json();
-  let text=j.content&&j.encoding==="base64"?b64dec(j.content):null;
-  if(text==null){const r2=await ghFetch("contents/"+DATA_PATH,{accept:"application/vnd.github.raw"});if(!r2.ok)throw new GhError(r2.status,ghMsg(r2.status));text=await r2.text()}
-  let data={};try{data=JSON.parse(text||"{}")}catch(e){data={}}
-  return {items:data&&typeof data.items==="object"&&data.items?data.items:{},sha:j.sha};
+  const j=await api(SHEETS+sheetId+"/values/"+rng(TAB+"!A1:Q")+"?valueRenderOption=UNFORMATTED_VALUE");
+  const rows=(j&&j.values)||[];remoteRows=rows.length;
+  const out={};
+  for(const r of rows){const x=fromRow(r);if(x&&(!out[x[0]]||stamp(x[1])>=stamp(out[x[0]])))out[x[0]]=x[1]}
+  return out;
 }
+async function pushRemote(all){
+  const ids=Object.keys(all).sort((a,b)=>(all[a].deleted?1:0)-(all[b].deleted?1:0)||(all[a].createdAt||0)-(all[b].createdAt||0));
+  const values=[HEAD].concat(ids.map(id=>toRow(id,all[id])));
+  const n=values.length;
+  while(values.length<remoteRows)values.push(HEAD.map(()=>""));
+  const range=TAB+"!A1:Q"+values.length;
+  await api(SHEETS+sheetId+"/values/"+rng(range)+"?valueInputOption=RAW",{method:"PUT",body:{range,majorDimension:"ROWS",values}},true);
+  remoteRows=n;
+}
+const rowsSig=o=>JSON.stringify(Object.keys(o).sort().map(id=>toRow(id,o[id])));
 function mergeItems(remote,local){const out=Object.assign({},remote);for(const [id,d] of Object.entries(local)){if(!out[id]||stamp(d)>stamp(out[id]))out[id]=d}return out}
-const canon=o=>JSON.stringify(Object.keys(o).sort().map(k=>[k,o[k]]));
 function pruneTombstones(o){const lim=Date.now()-30*864e5;for(const [id,d] of Object.entries(o))if(d&&d.deleted&&stamp(d)<lim)delete o[id];return o}
 async function uploadPendingPhotos(){
-  for(const [id,d] of Object.entries(items)){
-    if(!d||d.deleted||!d.photo||!String(d.photo).startsWith("data:"))continue;
-    const path=`fotos/${id}-${Date.now().toString(36)}.jpg`;
-    const r=await ghFetch("contents/"+encPath(path),{method:"PUT",body:{message:"Foto de "+(d.name||"producto"),content:d.photo.split(",")[1]}});
-    if(!r.ok)throw new GhError(r.status,ghMsg(r.status));
-    photoMem.set(path,d.photo);idbPutKey("photo:"+path,d.photo);
-    const old=d.photoPath;
-    const cur2=items[id];if(!cur2||cur2.deleted)continue;
-    items[id]=Object.assign({},cur2,{photo:"",photoPath:path,updatedAt:Date.now()});
-    if(old&&old!==path)deleteRemotePhoto(old);
-  }
+  const pend=Object.entries(items).filter(([,d])=>d&&!d.deleted&&d.photo&&String(d.photo).startsWith("data:image"));
+  if(!pend.length)return;
+  const rows=pend.map(([id,d])=>[id+"-"+Date.now().toString(36),d.photo]);
+  await api(SHEETS+sheetId+"/values/"+rng(PHOTO_TAB+"!A:B")+":append?valueInputOption=RAW&insertDataOption=INSERT_ROWS",{method:"POST",body:{values:rows}},true);
+  const now=Date.now();
+  pend.forEach(([id,d],i)=>{const key=rows[i][0];photoMem.set(key,d.photo);idbPutKey("photo:"+key,d.photo);const c=items[id];if(c&&!c.deleted&&c.photo===d.photo)items[id]=Object.assign({},c,{photo:"",photoKey:key,updatedAt:now})});
+  persist();
 }
-async function deleteRemotePhoto(path){
-  if(!gh||!path)return;
-  try{const r=await ghFetch("contents/"+encPath(path));if(!r.ok)return;const j=await r.json();
-    await ghFetch("contents/"+encPath(path),{method:"DELETE",body:{message:"Quitar foto",sha:j.sha}})}catch(e){}
-}
-let syncing=false,syncAgain=false,syncTimer=null,lastSync=0,syncErr="";
-function scheduleSync(delay=1200){if(!gh)return;clearTimeout(syncTimer);syncTimer=setTimeout(sync,delay)}
+let syncing=false,syncAgain=false,syncTimer=null,lastSync=0,lastTry=0,syncErr="",syncErrStatus=0;
+function scheduleSync(delay=1200){if(!linked())return;clearTimeout(syncTimer);syncTimer=setTimeout(sync,delay)}
 async function sync(){
-  if(!gh)return;
+  if(!linked())return;
   if(syncing){syncAgain=true;return}
-  syncing=true;setSyncUi("busy");
+  syncing=true;lastTry=Date.now();if(!lastSync||syncErr)setSyncUi("busy");
   try{
     await uploadPendingPhotos();
-    let done=false;
-    for(let attempt=0;attempt<4&&!done;attempt++){
-      const remote=await pullRemote();
-      const merged=pruneTombstones(mergeItems(remote.items,items));
-      if(canon(merged)!==canon(items)){items=merged;persist();render()}else items=merged;
-      if(canon(merged)===canon(remote.items)){done=true;break}
-      const body={message:"Actualizar lista de la compra",content:b64enc(JSON.stringify({app:"lista-compra",version:2,updatedAt:new Date().toISOString(),items:merged},null,1))};
-      if(remote.sha)body.sha=remote.sha;
-      const r=await ghFetch("contents/"+DATA_PATH,{method:"PUT",body});
-      if(r.status===409||r.status===422){await new Promise(res=>setTimeout(res,400+Math.random()*600));continue}
-      if(!r.ok)throw new GhError(r.status,ghMsg(r.status));
-      done=true;
-    }
-    if(!done)throw new GhError(409,"Otro dispositivo está guardando a la vez. Se reintentará enseguida.");
-    lastSync=Date.now();syncErr="";setSyncUi("ok");
+    const remote=await pullRemote();
+    const merged=pruneTombstones(mergeItems(remote,items));
+    const localChanged=rowsSig(merged)!==rowsSig(items);
+    items=merged;if(localChanged){persist();render()}
+    if(rowsSig(merged)!==rowsSig(remote)){await pushRemote(merged);setTimeout(()=>scheduleSync(0),4000)}
+    lastSync=Date.now();syncErr="";syncErrStatus=0;sheetState="ok";setSyncUi("ok");
   }catch(e){
-    syncErr=e instanceof GhError?e.message:(navigator.onLine===false?"Sin conexión: se guardará en GitHub cuando vuelvas a tener internet.":"No se ha podido conectar con GitHub.");
+    syncErr=e instanceof ApiError?e.message:apiMsg(0);syncErrStatus=e instanceof ApiError?e.status:0;
+    if(e instanceof ApiError&&(e.status===404||(e.status===403&&!e.write)))sheetState="denied";
     setSyncUi("err");
   }finally{
     syncing=false;
@@ -385,92 +480,197 @@ async function sync(){
 }
 function setSyncUi(state){
   const b=$("syncBtn"),t=$("syncTxt");b.classList.remove("ok","busy","err");
-  if(!gh){t.textContent="Solo en este móvil · Conectar con GitHub";return}
+  if(!auth||!auth.email){t.textContent="Solo en este dispositivo · Entrar con Google";return}
+  if(!sheetId){b.classList.add("busy");t.textContent="Conectado como "+auth.email+" · elige la hoja";return}
+  if(!tokenOk()){b.classList.add("err");t.textContent="Sesión caducada · toca para entrar";return}
   b.classList.add(state||"ok");
-  if(state==="busy")t.textContent="Sincronizando con GitHub…";
+  if(state==="busy")t.textContent="Sincronizando con Google…";
   else if(state==="err")t.textContent=syncErr||"Error al sincronizar";
-  else t.textContent=lastSync?"Guardada en GitHub · "+new Date(lastSync).toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"}):"Conectada a GitHub";
+  else t.textContent=lastSync?"Guardada en Google · "+new Date(lastSync).toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"}):"Conectada a Google";
 }
-/* fotos guardadas en GitHub: se descargan una vez y quedan en el móvil */
-const photoMem=new Map(),photoLoading=new Set();
+/* fotos: pestaña «Fotos» de la hoja; se descargan una vez y quedan en el dispositivo */
+const photoMem=new Map(),photoLoading=new Set();let photosFetched=0;
 function photoSrc(d){
   if(d.photo)return d.photo;
-  if(d.photoPath){const c=photoMem.get(d.photoPath);if(c)return c;loadPhoto(d.photoPath);return (d.off&&d.off.img)||""}
+  if(d.photoKey){const c=photoMem.get(d.photoKey);if(c)return c;loadPhoto(d.photoKey);return (d.off&&d.off.img)||""}
   return (d.off&&d.off.img)||"";
 }
-async function loadPhoto(path){
-  if(photoLoading.has(path))return;photoLoading.add(path);
+async function loadPhoto(key){
+  if(photoLoading.has(key))return;photoLoading.add(key);
   try{
-    let v=await idbGetKey("photo:"+path);
-    if(!v&&gh){const r=await ghFetch("contents/"+encPath(path),{accept:"application/vnd.github.raw"});
-      if(r.ok){const blob=await r.blob();v=await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=()=>res(null);fr.readAsDataURL(new Blob([blob],{type:"image/jpeg"}))});if(v)idbPutKey("photo:"+path,v)}}
-    if(v){photoMem.set(path,v);render()}
+    let v=await idbGetKey("photo:"+key);
+    if(!v&&linked()&&tokenOk()&&Date.now()-photosFetched>60000){
+      photosFetched=Date.now();
+      const j=await api(SHEETS+sheetId+"/values/"+rng(PHOTO_TAB+"!A:B"));
+      for(const r of (j&&j.values)||[]){if(r[0]&&r[1]&&String(r[1]).startsWith("data:image")){photoMem.set(String(r[0]),r[1]);idbPutKey("photo:"+r[0],r[1])}}
+      v=photoMem.get(key);
+    }
+    if(v){photoMem.set(key,v);render()}
   }catch(e){}
-  finally{setTimeout(()=>photoLoading.delete(path),30000)}
+  finally{setTimeout(()=>photoLoading.delete(key),30000)}
 }
 
-/* ajustes */
+/* ajustes y hoja */
 function gStatus(t,err){const s=$("gStatus");s.textContent=t||"";s.hidden=!t;s.classList.toggle("err",!!err)}
+function saveDevice(name){deviceName=(name||"").trim().slice(0,30);try{if(deviceName)localStorage.setItem(DEV_KEY,deviceName);else localStorage.removeItem(DEV_KEY)}catch(e){}}
+const sheetFromText=s=>{s=String(s||"").trim();const m=s.match(/\/spreadsheets\/d\/([A-Za-z0-9_-]{20,})/)||s.match(/#hoja=([A-Za-z0-9_-]{20,})/)||s.match(/^([A-Za-z0-9_-]{30,})$/);return m?m[1]:null};
+const sheetUrl=()=>"https://docs.google.com/spreadsheets/d/"+sheetId+"/edit";
+const shareLink=()=>location.origin+location.pathname+"#hoja="+sheetId;
+async function checkSheet(id){
+  const j=await api(SHEETS+id+"?fields=properties.title,sheets.properties.title");
+  const tabs=((j&&j.sheets)||[]).map(s=>s.properties.title);
+  if(!tabs.includes(TAB))throw new ApiError(400,"Esa hoja no es de la lista de la compra (le falta la pestaña «"+TAB+"»).");
+  if(!tabs.includes(PHOTO_TAB)){try{await api(SHEETS+id+":batchUpdate",{method:"POST",body:{requests:[{addSheet:{properties:{title:PHOTO_TAB}}}]}},true)}catch(e){}}
+}
+async function createSheet(){
+  const j=await api("https://sheets.googleapis.com/v4/spreadsheets",{method:"POST",body:{properties:{title:"Lista de la compra",locale:"es_ES"},sheets:[{properties:{title:TAB,gridProperties:{frozenRowCount:1}}},{properties:{title:PHOTO_TAB}}]}},true);
+  const id=j.spreadsheetId;
+  await api(SHEETS+id+"/values/"+rng(TAB+"!A1:Q1")+"?valueInputOption=RAW",{method:"PUT",body:{range:TAB+"!A1:Q1",values:[HEAD]}},true);
+  return id;
+}
+function linkSheet(id){sheetId=id;remoteRows=0;jset(SHEET_KEY,{id})}
+let qrLib=null;
+function loadQrLib(){
+  if(window.QRCode)return Promise.resolve();
+  if(!qrLib)qrLib=new Promise((res,rej)=>{const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js";s.onload=res;s.onerror=()=>{qrLib=null;rej(new Error("qr"))};document.head.appendChild(s)});
+  return qrLib;
+}
 function openSettings(){
-  if(gh){$("gOwner").value=gh.owner;$("gRepo").value=gh.repo}
-  $("gToken").value="";$("gToken").placeholder=gh?"Guardado en este dispositivo (déjalo vacío para mantenerlo)":"github_pat_…";
-  $("gSave").textContent=gh?"Guardar cambios":"Conectar";
-  $("gOff").hidden=!gh;$("gSyncNow").hidden=!gh;
-  gStatus(gh?(syncErr||(lastSync?"Última sincronización: "+new Date(lastSync).toLocaleString("es-ES"):"")):"",!!(gh&&syncErr));
+  const signed=!!(auth&&auth.email),denied=sheetState==="denied";
+  $("gStepLogin").hidden=signed&&tokenOk()&&!denied;
+  $("gLogin").textContent=!signed?"Entrar con Google":denied?"Entrar con otra cuenta":"Entrar de nuevo con Google";
+  $("gRetry").hidden=!(signed&&tokenOk()&&denied&&sheetId);
+  $("gLoginHelp").hidden=signed;
+  $("gStepSheet").hidden=!(signed&&tokenOk()&&(!sheetId||denied));
+  $("gStepOk").hidden=!(signed&&sheetId&&!denied);
+  $("gShare").hidden=!(signed&&sheetId&&!denied);
+  $("gOff").hidden=!signed;
+  if(signed){$("gWho").textContent="Cuenta: "+auth.email+(sheetId?"":" · sin hoja elegida");}
+  if(sheetId)$("gOpenSheet").href=sheetUrl();
+  $("gDevice").value=deviceName;
+  $("gQr").hidden=true;$("gQr").innerHTML="";$("gCopyLink").hidden=true;$("gShowQr").hidden=false;
+  gStatus(!configured()?"Falta poner en la app el ID de cliente de Google.":(syncErr||(lastSync?"Última sincronización: "+new Date(lastSync).toLocaleString("es-ES"):"")),!configured()||!!syncErr);
   $("gScrim").hidden=false;
 }
-$("syncBtn").addEventListener("click",openSettings);
+$("syncBtn").addEventListener("click",()=>{
+  if(auth&&auth.email&&sheetId&&!tokenOk()&&configured()){signIn("auto");return}
+  openSettings();
+});
+$("gLogin").addEventListener("click",()=>signIn(!auth||!auth.email||sheetState==="denied"?"select":"auto"));
+$("gRetry").addEventListener("click",async()=>{
+  gStatus("Comprobando el acceso a la hoja…");
+  try{await checkSheet(sheetId);sheetState="ok";await sync();openSettings();gStatus(syncErr||"Ya tienes acceso: la lista está sincronizada.",!!syncErr)}
+  catch(e){gStatus(e.message||apiMsg(0),true)}
+});
 $("gCancel").addEventListener("click",()=>{$("gScrim").hidden=true});
 $("gScrim").addEventListener("click",e=>{if(e.target===$("gScrim"))$("gScrim").hidden=true});
-$("gSyncNow").addEventListener("click",async()=>{gStatus("Sincronizando…");await sync();gStatus(syncErr||"Sincronizada.",!!syncErr)});
-$("gOff").addEventListener("click",()=>{saveCfg(null);setSyncUi();$("gScrim").hidden=true;toast("Desconectado. La lista sigue en este dispositivo.")});
-$("gForm").addEventListener("submit",async e=>{
-  e.preventDefault();
-  const cfg={owner:$("gOwner").value.trim(),repo:$("gRepo").value.trim(),token:$("gToken").value.trim()||(gh&&gh.token)||""};
-  if(!cfg.owner||!cfg.repo){gStatus("Escribe el usuario y el repositorio.",true);return}
-  if(!cfg.token){gStatus("Pega el token de GitHub.",true);return}
-  $("gSave").disabled=true;gStatus("Comprobando el acceso…");
-  try{
-    const r=await ghFetch("",{},cfg);
-    if(!r.ok){gStatus(ghMsg(r.status),true);return}
-    const repo=await r.json();
-    if(repo.permissions&&repo.permissions.push===false){gStatus(ghMsg(403),true);return}
-    saveCfg(cfg);
-    gStatus(repo.private?"Conectado. Sincronizando…":"Conectado, pero el repositorio es público: cualquiera podrá ver tu lista. Sincronizando…");
-    await sync();
-    gStatus(syncErr?syncErr:(repo.private?"Listo: la lista está guardada en GitHub.":"Listo, pero ojo: el repositorio es público."),!!syncErr);
-  }catch(err){gStatus(ghMsg(0),true)}
-  finally{$("gSave").disabled=false}
+$("gSaveName").addEventListener("click",()=>{saveDevice($("gDevice").value);render();gStatus("Nombre guardado.")});
+$("gSyncNow").addEventListener("click",async()=>{gStatus("Sincronizando…");await sync();gStatus(syncErr||"Sincronizada.",!!syncErr);if(syncErrStatus===401)$("gStepLogin").hidden=false});
+$("gCreate").addEventListener("click",async()=>{
+  $("gCreate").disabled=true;gStatus("Creando la hoja en tu Google Drive…");
+  try{const id=await createSheet();linkSheet(id);sheetState="ok";await sync();openSettings();gStatus(syncErr||"Hoja creada y conectada. Ahora compártela con las demás cuentas.",!!syncErr)}
+  catch(e){gStatus(e.message||apiMsg(0),true)}
+  finally{$("gCreate").disabled=false}
 });
+$("gUseSheet").addEventListener("click",async()=>{
+  const id=sheetFromText($("gSheetUrl").value);
+  if(!id){gStatus("Pega el enlace completo de la hoja (docs.google.com/spreadsheets/d/…).",true);return}
+  gStatus("Comprobando el acceso a la hoja…");
+  try{await checkSheet(id);linkSheet(id);sheetState="ok";await sync();openSettings();gStatus(syncErr||"Hoja conectada.",!!syncErr)}
+  catch(e){gStatus(e.message||apiMsg(0),true)}
+});
+$("gShowQr").addEventListener("click",async()=>{
+  if(!sheetId)return;const box=$("gQr");box.innerHTML="";
+  try{await loadQrLib();new QRCode(box,{text:shareLink(),width:440,height:440,correctLevel:QRCode.CorrectLevel.M});box.hidden=false;$("gCopyLink").hidden=false;$("gShowQr").hidden=true}
+  catch(e){gStatus("No se ha podido crear el QR. Usa «Copiar enlace».",true);$("gCopyLink").hidden=false}
+});
+$("gCopyLink").addEventListener("click",async()=>{
+  const link=shareLink();
+  try{await navigator.clipboard.writeText(link);gStatus("Enlace copiado. Ábrelo en el otro dispositivo y entra con su cuenta de Google.")}
+  catch(e){msg("Enlace de la app",`<textarea class="copybox" readonly id="copyArea">${esc(link)}</textarea>`,[["Cerrar","ghost",closeMsg]]);setTimeout(()=>{const a=$("copyArea");a.focus();a.select()},60)}
+});
+$("gOff").addEventListener("click",()=>{
+  if(auth&&auth.token){try{fetch("https://oauth2.googleapis.com/revoke?token="+encodeURIComponent(auth.token),{method:"POST",mode:"no-cors"})}catch(e){}}
+  auth=null;jset(AUTH_KEY,null);setSyncUi();$("gScrim").hidden=true;toast("Sesión cerrada. La lista sigue en este dispositivo.");
+});
+async function startup(){
+  const ret=await handleOAuthReturn();
+  const hm=location.hash.match(/^#hoja=([A-Za-z0-9_-]{20,})/);
+  if(hm){linkSheet(hm[1]);try{history.replaceState(null,"",location.pathname+location.search)}catch(e){}}
+  setSyncUi();
+  if(ret&&ret.error){
+    if(ret.error==="state")return;
+    if(/interaction_required|login_required|consent_required|account_selection_required/.test(ret.error)){setSyncUi();return}
+    openSettings();gStatus(ret.error==="access_denied"?"No se ha dado permiso a la app en Google.":"Google no ha permitido entrar ("+ret.error+").",true);return;
+  }
+  if(!ret&&auth&&auth.email&&!tokenOk()&&configured()){
+    let last=0;try{last=+(localStorage.getItem("oauth-silent")||0)}catch(e){}
+    if(Date.now()-last>120000){try{localStorage.setItem("oauth-silent",String(Date.now()))}catch(e){}signIn("none");return}
+  }
+  if(ret&&ret.ok&&sheetId){
+    try{await checkSheet(sheetId);sheetState="ok"}catch(e){if(e.status===403||e.status===404)sheetState="denied";openSettings();gStatus(e.message,true);return}
+    await sync();
+    if(hm){openSettings();gStatus(syncErr||"Listo: este dispositivo usa la lista compartida. Ponle un nombre si quieres.",!!syncErr)}
+    else toast(syncErr||("Conectado como "+auth.email));
+    return;
+  }
+  if(ret&&ret.ok&&!sheetId){openSettings();return}
+  if(hm){openSettings();gStatus("Entra con la cuenta de Google con la que te han compartido la hoja.")}
+  if(linked()&&tokenOk())sync();
+}
 
 /* ================= lista ================= */
 const checkSvg='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>';
 let filter="pending";
 function fmtQty(d){const n=Number(d.qty);const s=Number.isFinite(n)?String(n).replace(".",","):"1";return d.unit&&d.unit!=="ud"?`${s} ${d.unit}`:`×${s}`}
 function nsBadge(g){return g&&NS_COL[g]?`<span class="ns" style="background:${NS_COL[g]}" title="Nutri-Score ${g.toUpperCase()}">${g}</span>`:""}
+function groupHtml(rows,rowFn){
+  const groups={};rows.forEach(([id,d])=>{const c=CAT_NAMES.includes(d.cat)?d.cat:"Otros";(groups[c]=groups[c]||[]).push([id,d])});
+  return CATS.filter(([c])=>groups[c]).map(([c,col])=>`<section class="aisle"><h2><span class="dot" style="background:${col}"></span>${esc(c)}</h2>${groups[c].map(rowFn).join("")}</section>`).join("");
+}
 function render(){
-  const all=live().sort((a,b)=>(a[1].createdAt||0)-(b[1].createdAt||0));
+  const all=active().sort((a,b)=>(a[1].createdAt||0)-(b[1].createdAt||0));
+  const habs=archived();
   const pend=all.filter(([,d])=>!d.checked).length;
   $("count").textContent=all.length?`${pend} por comprar · ${all.length-pend} en el carrito`:"";
-  const shown=all.filter(([,d])=>filter==="all"||(filter==="pending"?!d.checked:d.checked));
+  $("chipHab").textContent=habs.length?`Habituales (${habs.length})`:"Habituales";
+  const seen=new Set();$("habList").innerHTML=habs.map(([,d])=>d.name).filter(n=>{const k=norm(n);if(seen.has(k))return false;seen.add(k);return true}).map(n=>`<option value="${esc(n)}"></option>`).join("");
   const list=$("list");
-  if(!all.length){list.innerHTML=`<div class="empty"><strong>La lista está vacía</strong><span>Escanea un producto para ver su ficha nutricional y añadirlo, o escribe su nombre arriba.</span></div>`;return}
+  if(filter==="habituales"){
+    const q=norm($("quick").value);
+    const rows=habs.filter(([,d])=>!q||norm(d.name).includes(q)||norm(d.pref).includes(q))
+      .sort((a,b)=>(b[1].timesBought||0)-(a[1].timesBought||0)||String(a[1].name).localeCompare(String(b[1].name),"es"));
+    if(!habs.length){list.innerHTML=`<div class="empty"><strong>Aún no hay habituales</strong><span>Cuando pulses «Quitar marcados» después de comprar, esos productos se guardan aquí para volver a añadirlos con un toque.</span></div>`;return}
+    if(!rows.length){list.innerHTML=`<div class="empty"><strong>Ningún habitual coincide</strong><span>Borra el texto de la caja de arriba para verlos todos.</span></div>`;return}
+    list.innerHTML=groupHtml(rows,([id,d])=>{
+      const img=photoSrc(d);
+      const meta=[d.pref,d.timesBought?`comprado ${d.timesBought} ${d.timesBought===1?"vez":"veces"}`:""].filter(Boolean).join(" · ");
+      return `<div class="item">
+        ${img?`<img class="thumb" src="${esc(img)}" alt="" loading="lazy" referrerpolicy="no-referrer">`:""}
+        <button class="body" type="button" data-open="${esc(id)}"><span class="name">${esc(d.name)}</span>${(meta||d.off)?`<span class="meta">${d.off?nsBadge(d.off.ns):""}${esc(meta)}</span>`:""}</button>
+        <button class="readd" type="button" data-readd="${esc(id)}" aria-label="Añadir ${esc(d.name)} a la lista">+</button></div>`});
+    return;
+  }
+  const shown=all.filter(([,d])=>filter==="all"||(filter==="pending"?!d.checked:d.checked));
+  if(!all.length){list.innerHTML=`<div class="empty"><strong>La lista está vacía</strong><span>${habs.length?"Abre «Habituales» para añadir lo de siempre con un toque, o escanea algo nuevo.":"Escanea un producto para ver su ficha nutricional y añadirlo, o escribe su nombre arriba."}</span></div>`;return}
   if(!shown.length){list.innerHTML=`<div class="empty"><strong>${filter==="pending"?"Todo está en el carrito":"Nada marcado todavía"}</strong><span>Cambia el filtro para ver el resto.</span></div>`;return}
-  const groups={};shown.forEach(([id,d])=>{const c=CAT_NAMES.includes(d.cat)?d.cat:"Otros";(groups[c]=groups[c]||[]).push([id,d])});
-  list.innerHTML=CATS.filter(([c])=>groups[c]).map(([c,col])=>`<section class="aisle"><h2><span class="dot" style="background:${col}"></span>${esc(c)}</h2>${groups[c].map(([id,d])=>{
+  list.innerHTML=groupHtml(shown,([id,d])=>{
     const img=photoSrc(d);
-    const meta=[d.pref,d.notes].filter(Boolean).join(" · ");
+    const meta=[d.pref,d.notes,d.addedBy&&d.addedBy!==deviceName?"lo añadió "+d.addedBy:""].filter(Boolean).join(" · ");
     return `<div class="item${d.checked?" done":""}">
       <button class="check" type="button" role="checkbox" aria-checked="${d.checked?"true":"false"}" aria-label="En el carrito: ${esc(d.name)}" data-check="${esc(id)}">${d.checked?checkSvg:""}</button>
       ${img?`<img class="thumb" src="${esc(img)}" alt="" loading="lazy" referrerpolicy="no-referrer">`:""}
       <button class="body" type="button" data-open="${esc(id)}"><span class="name">${esc(d.name)}</span>${(meta||d.off)?`<span class="meta">${d.off?nsBadge(d.off.ns):""}${esc(meta)}</span>`:""}</button>
-      <span class="qty">${esc(fmtQty(d))}</span></div>`}).join("")}</section>`).join("");
+      <span class="qty">${esc(fmtQty(d))}</span></div>`});
 }
 $("list").addEventListener("click",e=>{
   const c=e.target.closest("[data-check]");if(c){const d=items[c.dataset.check];if(d&&!d.deleted){setItem(c.dataset.check,Object.assign({},d,{checked:!d.checked}))}return}
+  const a=e.target.closest("[data-readd]");if(a){const d=items[a.dataset.readd];if(d&&d.archived){readd(a.dataset.readd);toast(`${d.name} añadido a la lista`)}return}
   const o=e.target.closest("[data-open]");if(o)openSheet({id:o.dataset.open});
 });
-document.querySelectorAll(".chip").forEach(ch=>ch.addEventListener("click",()=>{filter=ch.dataset.f;document.querySelectorAll(".chip").forEach(x=>x.setAttribute("aria-pressed",x===ch?"true":"false"));render()}));
+function setFilter(f){filter=f;document.querySelectorAll(".chip").forEach(x=>x.setAttribute("aria-pressed",x.dataset.f===f?"true":"false"));$("quick").placeholder=f==="habituales"?"Buscar en habituales…":"O escribe: 2 kg naranjas";render()}
+document.querySelectorAll(".chip").forEach(ch=>ch.addEventListener("click",()=>setFilter(ch.dataset.f)));
+$("quick").addEventListener("input",()=>{if(filter==="habituales")render()});
 
 /* ================= categorías ================= */
 function guessCat(name){
@@ -509,32 +709,80 @@ function parseQuick(t){
   const m=t.match(/^(\d+(?:[.,]\d+)?)\s*(kg|g|gr|l|litros?|ud|uds|unidades?|paquetes?|packs?|docenas?)?\s+(?:de\s+)?(.+)$/i);
   if(m){qty=parseFloat(m[1].replace(",","."));const u=(m[2]||"").toLowerCase();
     unit=u.startsWith("kg")?"kg":(u==="g"||u==="gr")?"g":u.startsWith("l")?"L":u.startsWith("paq")?"paquete":u.startsWith("pack")?"pack":u.startsWith("doc")?"docena":"ud";name=m[3]}
-  return {name:cap(name),qty,unit};
+  return {name:cap(name),qty,unit,explicit:!!m};
 }
 $("addForm").addEventListener("submit",e=>{
   e.preventDefault();const v=$("quick").value;if(!v.trim())return;
   const p=parseQuick(v);
-  setItem(newId(),{name:p.name,qty:p.qty,unit:p.unit,cat:guessCat(p.name),pref:"",notes:"",barcode:"",photo:"",off:null,checked:false,createdAt:Date.now()});
-  $("quick").value="";
+  const inList=active().find(([,d])=>norm(d.name)===norm(p.name));
+  const hab=findHab(null,p.name);
+  if(inList){toast(`${inList[1].name} ya está en la lista`)}
+  else if(hab){readd(hab[0],p.explicit?{qty:p.qty,unit:p.unit}:{});toast(`${hab[1].name} añadido desde Habituales`)}
+  else{setItem(newId(),{name:p.name,qty:p.qty,unit:p.unit,cat:guessCat(p.name),pref:"",notes:"",barcode:"",photo:"",off:null,checked:false,createdAt:Date.now()});toast(`${p.name} añadido`)}
+  $("quick").value="";if(filter==="habituales")render();
+});
+
+/* ================= buscador por texto ================= */
+let lastSearch=0;
+async function searchProducts(q){
+  const params=new URLSearchParams({search_terms:q,search_simple:"1",action:"process",json:"1",page_size:"24",sort_by:"unique_scans_n",tagtype_0:"countries",tag_contains_0:"contains",tag_0:"spain",fields:"code,product_name,product_name_es,brands,quantity,image_front_small_url,nutriscore_grade"});
+  const {status,json}=await getJson("https://world.openfoodfacts.org/cgi/search.pl?"+params.toString(),15000);
+  if(status===429)throw new Error("limite");
+  if(status>=400)throw new Error("http "+status);
+  return ((json&&json.products)||[]).filter(p=>p.code&&(p.product_name_es||p.product_name));
+}
+function sRow(code,img,name,meta,ns,extra){
+  return `<button type="button" class="item" data-scode="${esc(code)}" data-sname="${esc(name)}" ${extra||""} style="text-align:left;width:100%">
+    ${img?`<img class="thumb" src="${esc(img)}" alt="" loading="lazy" referrerpolicy="no-referrer">`:""}
+    <span class="body"><span class="name">${esc(name)}</span><span class="meta">${nsBadge(ns)}${esc(meta)}</span></span></button>`;
+}
+$("searchBtn").addEventListener("click",async()=>{
+  const q=$("quick").value.trim();
+  if(q.length<2){toast("Escribe qué buscas, por ejemplo «yogur natural»");$("quick").focus();return}
+  const habs=archived().filter(([,d])=>norm(d.name).includes(norm(q))||norm(d.pref).includes(norm(q)));
+  $("sTitle").textContent=`Buscar «${q}»`;$("sScrim").hidden=false;
+  const habHtml=habs.length?`<h2>En tus habituales</h2>`+habs.map(([id,d])=>sRow(d.barcode||"",photoSrc(d),d.name,d.pref||"",d.off&&d.off.ns,`data-hab="${esc(id)}"`)).join(""):"";
+  $("sList").innerHTML=habHtml;
+  const wait=6500-(Date.now()-lastSearch);
+  if(wait>0){$("sStatus").textContent=`Para no saturar Open Food Facts, espera ${Math.ceil(wait/1000)} s y vuelve a buscar.`;return}
+  lastSearch=Date.now();$("sStatus").textContent="Buscando en productos a la venta en España…";
+  try{
+    const res=await searchProducts(q);
+    $("sStatus").textContent=res.length?`${res.length} productos encontrados.`:"No hay resultados. Prueba con otras palabras o con la marca.";
+    $("sList").innerHTML=habHtml+(res.length?`<h2>A la venta en España</h2>`:"")+res.map(p=>sRow(p.code,p.image_front_small_url,(p.product_name_es||p.product_name).trim(),[String(p.brands||"").split(",")[0],p.quantity].filter(Boolean).join(" · "),String(p.nutriscore_grade||"").toLowerCase())).join("");
+  }catch(e){$("sStatus").textContent=e.message==="limite"?"Open Food Facts pide esperar un poco entre búsquedas. Vuelve a intentarlo en un minuto.":"No se ha podido buscar ahora mismo. Comprueba la conexión."}
+});
+$("sClose").addEventListener("click",()=>{$("sScrim").hidden=true});
+$("sScrim").addEventListener("click",async e=>{
+  if(e.target===$("sScrim")){$("sScrim").hidden=true;return}
+  const row=e.target.closest("[data-scode]");if(!row)return;
+  $("sScrim").hidden=true;
+  if(row.dataset.hab){openSheet({id:row.dataset.hab});return}
+  const code=row.dataset.scode;toast("Cargando la ficha…");
+  try{const o=await lookup(code);openSheet(o?{off:o,code}:{code,notFound:true})}
+  catch(err){openSheet({code,notFound:false});setStatus("No se ha podido cargar la ficha. Puedes añadirlo igualmente.",true)}
+  if(cur&&!cur.id&&!$("fName").value)$("fName").value=row.dataset.sname||"";
 });
 
 /* ================= Open Food Facts ================= */
-const OFF_FIELDS="code,product_name,product_name_es,generic_name_es,brands,quantity,image_front_small_url,image_front_url,nutriscore_grade,nova_group,ecoscore_grade,nutriments,nutrient_levels,additives_tags,allergens_tags,categories_tags";
+const OFF_FIELDS="code,product_type,product_name,product_name_es,generic_name_es,brands,quantity,image_front_small_url,image_front_url,nutriscore_grade,nova_group,ecoscore_grade,nutriments,nutrient_levels,additives_tags,allergens_tags,categories_tags";
+const OFF_SITES={food:["Open Food Facts","es.openfoodfacts.org"],beauty:["Open Beauty Facts","es.openbeautyfacts.org"],petfood:["Open Pet Food Facts","es.openpetfoodfacts.org"],product:["Open Products Facts","es.openproductsfacts.org"]};
 const offCache=new Map();
-async function lookup(code){
-  if(offCache.has(code))return offCache.get(code);
-  const url=`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?lc=es&fields=${OFF_FIELDS}`;
-  const ctrl=new AbortController();const to=setTimeout(()=>ctrl.abort(),12000);
-  let r;try{r=await fetch(url,{signal:ctrl.signal})}finally{clearTimeout(to)}
-  if(r.status===404){offCache.set(code,null);return null}
-  if(!r.ok)throw new Error("http "+r.status);
-  const j=await r.json();
-  if(!j||j.status!==1||!j.product){offCache.set(code,null);return null}
+async function getJson(url,ms){
+  const ctrl=new AbortController();const to=setTimeout(()=>ctrl.abort(),ms||12000);
+  try{const r=await fetch(url,{signal:ctrl.signal});return {status:r.status,json:r.ok?await r.json():null}}
+  finally{clearTimeout(to)}
+}
+async function lookupOff(code){
+  /* product_type=all busca a la vez en Open Food, Beauty, Pet Food y Products Facts */
+  const {status,json:j}=await getJson(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?lc=es&product_type=all&fields=${OFF_FIELDS}`);
+  if(status===404||!j||j.status!==1||!j.product){if(status>=500)throw new Error("http "+status);return null}
   const p=j.product,n=p.nutriments||{};
   const num=k=>{const v=n[k+"_100g"];return typeof v==="number"?v:(v!=null&&v!==""&&!isNaN(+v)?+v:null)};
   const ns=(p.nutriscore_grade||"").toLowerCase();const eco=(p.ecoscore_grade||"").toLowerCase();
-  const out={
-    code:p.code||code,
+  const type=OFF_SITES[p.product_type]?p.product_type:"food";
+  return {
+    code:p.code||code,type,src:OFF_SITES[type][0],srcUrl:`https://${OFF_SITES[type][1]}/producto/${encodeURIComponent(p.code||code)}`,
     name:(p.product_name_es||p.product_name||p.generic_name_es||"").trim(),
     brand:(p.brands||"").split(",")[0].trim(),
     quantity:(p.quantity||"").trim(),
@@ -548,6 +796,21 @@ async function lookup(code){
     allergens:(p.allergens_tags||[]).map(t=>t.replace(/^[a-z]{2}:/,"").replace(/-/g," ")),
     cats:(p.categories_tags||[]).slice(0,40)
   };
+}
+async function lookupUpcItemDb(code){
+  /* respaldo gratuito sin registro (100 consultas al día); si el navegador lo bloquea, se ignora */
+  try{
+    const {json:j}=await getJson(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(code)}`,8000);
+    const it=j&&j.items&&j.items[0];if(!it||!it.title)return null;
+    return {code,type:"other",src:"UPCitemdb",srcUrl:`https://www.upcitemdb.com/upc/${encodeURIComponent(code)}`,name:String(it.title).trim(),brand:String(it.brand||"").trim(),quantity:String(it.size||"").trim(),img:"",ns:"",nova:null,eco:"",n:{},lv:{},additives:[],allergens:[],cats:[]};
+  }catch(e){return null}
+}
+async function lookup(code){
+  if(offCache.has(code))return offCache.get(code);
+  let out=null,offFailed=false;
+  try{out=await lookupOff(code)}catch(e){offFailed=true}
+  if(!out)out=await lookupUpcItemDb(code);
+  if(!out&&offFailed)throw new Error("sin conexión");
   offCache.set(code,out);return out;
 }
 const ALLERG={gluten:"gluten",milk:"leche",eggs:"huevo",nuts:"frutos secos",peanuts:"cacahuete",soybeans:"soja",fish:"pescado",crustaceans:"crustáceos",molluscs:"moluscos",celery:"apio",mustard:"mostaza","sesame seeds":"sésamo","sulphur dioxide and sulphites":"sulfitos",lupin:"altramuz"};
@@ -560,7 +823,12 @@ function infoHtml(o,fallbackName){
   const ecoBox=o.eco?`<span class="big" style="background:${NS_COL[o.eco]}">${o.eco}</span>`:`<span class="big na">Sin dato</span>`;
   const rowsLv=[["fat","Grasas",o.n.fat,1],["saturated-fat","Grasas saturadas",o.n.sat,1],["sugars","Azúcares",o.n.sugars,1],["salt","Sal",o.n.salt,2]];
   const rowsOther=[["Energía",o.n.kcal==null?"–":Math.round(o.n.kcal)+" kcal"],["Proteínas",fmtNum(o.n.proteins,1)+(o.n.proteins==null?"":" g")],["Fibra",fmtNum(o.n.fiber,1)+(o.n.fiber==null?"":" g")]];
-  const allerg=o.allergens.map(a=>ALLERG[a]||a);
+  const allerg=(o.allergens||[]).map(a=>ALLERG[a]||a);
+  const food=!o.type||o.type==="food"||o.type==="petfood";
+  const srcLine=`<div class="src">Fuente: <a href="${esc(o.srcUrl||("https://es.openfoodfacts.org/producto/"+o.code))}" target="_blank" rel="noopener">ficha en ${esc(o.src||"Open Food Facts")}</a>. Los datos los aporta la comunidad y pueden estar incompletos.</div>`;
+  const head=`<div class="prod">${o.img?`<img src="${esc(o.img)}" alt="" referrerpolicy="no-referrer">`:""}
+    <div class="t"><h3 id="pTitle">${esc(o.name||fallbackName||"Producto sin nombre")}</h3><span class="brand">${esc([o.brand,o.quantity].filter(Boolean).join(" · "))}</span><span class="src">EAN ${esc(o.code)}</span></div></div>`;
+  if(!food||!o.n||o.n.kcal===undefined)return head+(allerg.length?`<div class="field"><label>Alérgenos</label><div class="tags">${allerg.map(a=>`<span class="tag warn">${esc(a)}</span>`).join("")}</div></div>`:"")+srcLine;
   return `<div class="prod">${o.img?`<img src="${esc(o.img)}" alt="" referrerpolicy="no-referrer">`:""}
     <div class="t"><h3 id="pTitle">${esc(o.name||fallbackName||"Producto sin nombre")}</h3><span class="brand">${esc([o.brand,o.quantity].filter(Boolean).join(" · "))}</span><span class="src">EAN ${esc(o.code)}</span></div></div>
   <div class="scores">
@@ -572,33 +840,43 @@ function infoHtml(o,fallbackName){
     ${rowsOther.map(([l,v])=>`<div class="r"><span class="l">${l}</span><span class="v">${v}</span><span class="lv"></span></div>`).join("")}
     ${rowsLv.map(([k,l,v,dec])=>{const lev=o.lv[k];return `<div class="r"><span class="dot" style="background:${lvColor(lev)}"></span><span class="l">${l}</span><span class="v">${fmtNum(v,dec)}${v==null?"":" g"}</span><span class="lv">${LV_TXT[lev]||""}</span></div>`}).join("")}
   </div>
-  ${o.additives.length?`<div class="field"><label>Aditivos (${o.additives.length})</label><div class="tags">${o.additives.map(a=>`<span class="tag">${esc(a)}</span>`).join("")}</div></div>`:`<div class="src">Sin aditivos registrados.</div>`}
+  ${(o.additives||[]).length?`<div class="field"><label>Aditivos (${o.additives.length})</label><div class="tags">${o.additives.map(a=>`<span class="tag">${esc(a)}</span>`).join("")}</div></div>`:`<div class="src">Sin aditivos registrados.</div>`}
   ${allerg.length?`<div class="field"><label>Alérgenos</label><div class="tags">${allerg.map(a=>`<span class="tag warn">${esc(a)}</span>`).join("")}</div></div>`:""}
-  <div class="src">Fuente: <a href="https://es.openfoodfacts.org/producto/${esc(o.code)}" target="_blank" rel="noopener">ficha en Open Food Facts</a>. Los datos los aporta la comunidad y pueden estar incompletos.</div>`;
+  ${srcLine}`;
 }
 
 /* ================= hoja de producto ================= */
-let cur=null; // {id, off, code, photo, photoPath, photoChanged}
+let cur=null; // {id, off, code, photo, photoKey, photoChanged}
 function setStatus(t,err){const s=$("pStatus");s.textContent=t||"";s.classList.toggle("err",!!err);s.hidden=!t}
 function showPhoto(src){const im=$("pPhoto");if(src){im.src=src;im.hidden=false;$("pPhotoDel").hidden=false}else{im.hidden=true;im.removeAttribute("src");$("pPhotoDel").hidden=true}}
 function openSheet({id,off,code,notFound}){
+  if(!id){
+    const inList=code?active().find(([,d])=>d.barcode===code):null;
+    const hab=inList?null:findHab(code,off&&off.name);
+    if(hab){
+      if(off)items[hab[0]]=Object.assign({},hab[1],{off});
+      openSheet({id:hab[0]});setStatus("Ya lo tenías en Habituales: revisa la cantidad y pulsa «Añadir a la lista».");return;
+    }
+  }
   const existing=id&&items[id]&&!items[id].deleted?items[id]:null;
-  cur={id:existing?id:null,off:existing?existing.off:(off||null),code:existing?existing.barcode:(code||""),photo:existing?existing.photo||"":"",photoPath:existing?existing.photoPath||"":"",photoChanged:false};
-  const shownPhoto=cur.photo||(cur.photoPath?(photoMem.get(cur.photoPath)||""):"");
+  cur={id:existing?id:null,off:existing?existing.off:(off||null),code:existing?existing.barcode:(code||""),photo:existing?existing.photo||"":"",photoKey:existing?existing.photoKey||"":"",photoChanged:false};
+  const shownPhoto=cur.photo||(cur.photoKey?(photoMem.get(cur.photoKey)||""):"");
   const o=cur.off;
   $("pInfo").innerHTML=infoHtml(o,existing?existing.name:"");
   if(existing){
     $("fName").value=existing.name;$("fQty").value=existing.qty;$("fUnit").value=existing.unit||"ud";
     $("fCat").value=CAT_NAMES.includes(existing.cat)?existing.cat:"Otros";$("fPref").value=existing.pref||"";$("fNotes").value=existing.notes||"";
-    $("pSave").textContent="Guardar";setStatus("");
+    $("pSave").textContent=existing.archived?"Añadir a la lista":"Guardar";setStatus("");
+    $("pDelete").textContent=existing.archived?"Borrar de habituales":"Quitar de la lista";
+    $("pDelMsg").textContent=existing.archived?"¿Borrar este producto de Habituales para siempre?":"¿Quitar este producto de la lista? Se queda en Habituales.";
   }else{
     const name=o?(o.name||""):"";
     $("fName").value=name;$("fQty").value=1;$("fUnit").value="ud";
     $("fCat").value=o?catFromOff(o.cats,name):"Otros";
     $("fPref").value=o?[o.brand,o.quantity].filter(Boolean).join(", "):"";$("fNotes").value="";
     $("pSave").textContent="Añadir a la lista";
-    if(notFound)setStatus(`El código ${code} no está en Open Food Facts. Escribe el nombre y añádelo igualmente.`);
-    else{const dup=live().find(([,d])=>d.barcode&&d.barcode===cur.code);
+    if(notFound){setStatus(`El código ${code} no está en Open Food Facts ni en las otras bases. Escribe el nombre y añádelo: la app lo recordará para la próxima vez.`);$("pInfo").innerHTML+=`<div class="src">¿Quieres ayudar? <a href="https://world.openfoodfacts.org/cgi/product.pl?type=add&code=${encodeURIComponent(code)}" target="_blank" rel="noopener">Añade este producto a Open Food Facts</a>.</div>`}
+    else{const dup=active().find(([,d])=>d.barcode&&d.barcode===cur.code);
       setStatus(dup?`Ya lo tienes en la lista (${fmtQty(dup[1])}). Si lo añades, se suma la cantidad.`:"")}
   }
   showPhoto(shownPhoto);
@@ -617,25 +895,29 @@ $("pForm").addEventListener("submit",e=>{
   const base={name,qty,unit:$("fUnit").value,cat:$("fCat").value,pref:$("fPref").value.trim(),notes:$("fNotes").value.trim(),barcode:cur.code||"",off:cur.off||null};
   if(cur.photoChanged){
     base.photo=cur.photo||"";
-    if(!cur.photo){if(cur.photoPath)deleteRemotePhoto(cur.photoPath);base.photoPath=""}
+    if(!cur.photo)base.photoKey="";
   }
-  if(cur.id){setItem(cur.id,Object.assign({},items[cur.id],base))}
+  if(cur.id){const wasHab=items[cur.id]&&items[cur.id].archived;setItem(cur.id,Object.assign({},items[cur.id],base,wasHab?{archived:false,checked:false}:{}))}
   else{
-    const dup=cur.code?live().find(([,d])=>d.barcode===cur.code):null;
+    const dup=cur.code?active().find(([,d])=>d.barcode===cur.code):null;
     if(dup){const [did,d]=dup;setItem(did,Object.assign({},d,{qty:(Number(d.qty)||0)+qty,checked:false},base.photo?{photo:base.photo}:{}))}
-    else setItem(newId(),Object.assign({photo:"",photoPath:""},base,{checked:false,createdAt:Date.now()}));
+    else setItem(newId(),Object.assign({photo:"",photoKey:""},base,{checked:false,createdAt:Date.now()}));
   }
   closeSheet();toast("Añadido a la lista");
 });
 $("pDelete").addEventListener("click",()=>{$("pDelConfirm").hidden=false});
 $("pDelNo").addEventListener("click",()=>{$("pDelConfirm").hidden=true});
-$("pDelYes").addEventListener("click",()=>{if(cur&&cur.id){const id=cur.id;closeSheet();delItem(id)}});
+$("pDelYes").addEventListener("click",()=>{
+  if(!cur||!cur.id)return;const id=cur.id,d=items[id];closeSheet();if(!d)return;
+  if(d.archived)delItem(id);else{setItem(id,Object.assign({},d,{archived:true,checked:false}));toast("Quitado. Lo tienes en Habituales.")}
+});
 $("pPhotoBtn").addEventListener("click",()=>{$("photoFile").value="";$("photoFile").click()});
 $("pPhotoDel").addEventListener("click",()=>{if(cur){cur.photo="";cur.photoChanged=true;showPhoto("")}});
 $("photoFile").addEventListener("change",async e=>{
   const f=e.target.files&&e.target.files[0];if(!f||!cur)return;
-  try{cur.photo=await shrink(f,720,0.72);cur.photoChanged=true;showPhoto(cur.photo)}catch(err){setStatus("No se ha podido leer la foto.",true)}
+  try{cur.photo=await shrinkFit(f);cur.photoChanged=true;showPhoto(cur.photo)}catch(err){setStatus("No se ha podido leer la foto.",true)}
 });
+async function shrinkFit(file){for(const [m,q] of [[640,0.7],[520,0.62],[420,0.55],[340,0.5],[260,0.45]]){const d=await shrink(file,m,q);if(d.length<48000)return d}throw new Error("foto")}
 function shrink(file,max,q){return new Promise((res,rej)=>{const u=URL.createObjectURL(file);const i=new Image();i.onload=()=>{const s=Math.min(1,max/Math.max(i.naturalWidth,i.naturalHeight));const c=document.createElement("canvas");c.width=Math.round(i.naturalWidth*s);c.height=Math.round(i.naturalHeight*s);c.getContext("2d").drawImage(i,0,0,c.width,c.height);URL.revokeObjectURL(u);res(c.toDataURL("image/jpeg",q))};i.onerror=()=>{URL.revokeObjectURL(u);rej()};i.src=u})}
 
 /* ================= escáner ================= */
@@ -688,6 +970,8 @@ async function onCode(code){
   if(handling)return;handling=true;scanning=false;clearTimeout(loopTimer);
   try{if(navigator.vibrate)navigator.vibrate(60)}catch(e){}
   scMsg(`Código ${code}: buscando el producto…`);
+  const known=live().find(([,d])=>d.barcode===code);
+  if(known&&!known[1].off){stopScanner();openSheet(known[1].archived?{code}:{id:known[0]});return}
   try{
     const o=await lookup(code);
     stopScanner();
@@ -711,7 +995,7 @@ $("mScrim").addEventListener("click",e=>{if(e.target===$("mScrim"))closeMsg()});
 let toastT=null;
 function toast(t){let el=document.getElementById("toast");if(!el){el=document.createElement("div");el.id="toast";el.setAttribute("role","status");el.style.cssText="position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-weight:600;z-index:40;max-width:90vw;text-align:center";document.body.appendChild(el)}el.textContent=t;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{el.hidden=true},2200)}
 function listText(){
-  const pend=live().map(([,d])=>d).filter(d=>!d.checked);
+  const pend=active().map(([,d])=>d).filter(d=>!d.checked);
   const parts=CAT_NAMES.map(c=>{const g=pend.filter(d=>(CAT_NAMES.includes(d.cat)?d.cat:"Otros")===c);if(!g.length)return"";
     return c.toUpperCase()+"\n"+g.map(d=>`- ${d.name} ${fmtQty(d)}${d.pref?` (${d.pref})`:""}${d.barcode?` [EAN ${d.barcode}]`:""}`).join("\n")}).filter(Boolean);
   return parts.length?"Lista de la compra\n\n"+parts.join("\n\n"):"";
@@ -723,9 +1007,9 @@ $("shareBtn").addEventListener("click",async()=>{
   catch(e){msg("Copia la lista",`<textarea class="copybox" readonly id="copyArea">${esc(t)}</textarea>`,[["Cerrar","ghost",closeMsg]]);setTimeout(()=>{const a=$("copyArea");a.focus();a.select()},60)}
 });
 $("clearBtn").addEventListener("click",()=>{
-  const done=live().filter(([,d])=>d.checked).map(([id])=>id);
+  const done=active().filter(([,d])=>d.checked).map(([id])=>id);
   if(!done.length){msg("No hay nada marcado","<p>Marca los productos que ya tengas para quitarlos de la lista.</p>",[["Vale","",closeMsg]]);return}
-  msg(`¿Quitar ${done.length} ${done.length===1?"producto":"productos"}?`,"<p>Se borran de la lista los que están marcados como en el carrito.</p>",[["Cancelar","ghost",closeMsg],["Quitar","danger",()=>{const now=Date.now();done.forEach(id=>{const d=items[id];if(d&&d.photoPath)deleteRemotePhoto(d.photoPath);items[id]={deleted:true,updatedAt:now}});persist();render();scheduleSync(300);closeMsg()}]]);
+  msg(`¿Quitar ${done.length} ${done.length===1?"producto":"productos"}?`,"<p>Salen de la lista y pasan a Habituales, para volver a añadirlos con un toque la próxima vez.</p>",[["Cancelar","ghost",closeMsg],["Quitar","",()=>{const now=Date.now();done.forEach(id=>{const d=items[id];if(d)items[id]=Object.assign({},d,{archived:true,checked:false,timesBought:(d.timesBought||0)+1,lastBought:now,updatedAt:now})});persist();render();scheduleSync(300);closeMsg();toast("Guardados en Habituales")}]]);
 });
 $("exportBtn").addEventListener("click",async()=>{
   const data=JSON.stringify({app:"lista-compra",version:1,exportedAt:new Date().toISOString(),items},null,0);
@@ -742,12 +1026,13 @@ $("importFile").addEventListener("change",async e=>{
   const vals=Object.entries(incoming).filter(([,d])=>d&&!d.deleted);const n=vals.length;
   msg("¿Restaurar la copia?",`<p>La copia tiene ${n} ${n===1?"producto":"productos"}. Se juntan con los que ya tienes; los repetidos se quedan con la versión de la copia.</p>`,[["Cancelar","ghost",closeMsg],["Restaurar","",()=>{const now=Date.now();vals.forEach(([id,d])=>{items[id]=Object.assign({},d,{updatedAt:now})});persist();render();scheduleSync(300);closeMsg();toast("Copia restaurada")}]]);
 });
-document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;if(!$("scanner").hidden)stopScanner();else if(!$("mScrim").hidden)closeMsg();else if(!$("gScrim").hidden)$("gScrim").hidden=true;else if(!$("pScrim").hidden)closeSheet()});
-document.addEventListener("visibilitychange",()=>{if(document.hidden){if(!$("scanner").hidden)stopScanner()}else scheduleSync(200)});
+document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;if(!$("scanner").hidden)stopScanner();else if(!$("mScrim").hidden)closeMsg();else if(!$("gScrim").hidden)$("gScrim").hidden=true;else if(!$("sScrim").hidden)$("sScrim").hidden=true;else if(!$("pScrim").hidden)closeSheet()});
+document.addEventListener("visibilitychange",()=>{if(document.hidden){if(!$("scanner").hidden)stopScanner()}else{setSyncUi(syncErr?"err":"ok");if(tokenOk())scheduleSync(200)}});
 window.addEventListener("online",()=>scheduleSync(200));
-setInterval(()=>{if(!document.hidden&&gh&&!syncing&&Date.now()-lastSync>45000)sync()},15000);
+setInterval(()=>{if(document.hidden||!linked()||!tokenOk()||syncing)return;const wait=syncErr?60000:18000;if(Date.now()-lastTry>wait)sync()},5000);
+window.addEventListener("hashchange",()=>{if(location.hash.startsWith("#hoja=")||/access_token=/.test(location.hash))startup()});
 
-loadAll().then(()=>{render();setSyncUi();if(gh)sync()});
+loadAll().then(()=>{render();startup()});
 })();
 </script>
 </body>
