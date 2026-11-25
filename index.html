@@ -121,6 +121,7 @@ h1{font-family:var(--font-display);font-weight:800;font-size:30px;line-height:1.
 .stepper{display:flex;align-items:center;background:var(--soft);border-radius:12px;flex:none}
 .stepper button{width:32px;height:44px;border:0;background:none;font-size:20px;font-weight:600;color:var(--muted);padding:0}
 .stepper button.plus{color:var(--accent)}
+.stepper button.del{color:var(--bad)}
 .stepper span{min-width:36px;text-align:center;font-family:var(--font-display);font-weight:700;font-size:14px;font-variant-numeric:tabular-nums}
 .card.done .name{text-decoration:line-through;color:var(--muted)}
 .card.done .q{font-size:13px;color:var(--muted);flex:none}
@@ -901,6 +902,7 @@ function infoHtml(o,fallbackName){
 /* ================= marcas propias y súper preferido ================= */
 const SHOP_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M4 10l2-6h12l2 6M4 10h16v10H4zM9 20v-5h6v5"/></svg>';
 const HEART_SVG='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.6-7 10-7 10z"/></svg>';
+const TRASH_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="width:18px;height:18px;vertical-align:middle"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>';
 const checkSvg='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>';
 const BRAND_WORDS=/\b(hacendado|deliplus|bosque verde|compy|eroski(?: basic| natur| seleqtia| sannia| belle)?|carrefour(?: classic| extra| bio| discount)?|d[ií]a|milbona|cien|w5|chef select|freeway|solevita|pilos|veritas)\b/gi;
 function stripBrand(t,extra){
@@ -969,7 +971,7 @@ function rowHtml(id,d){
     <button class="check" type="button" role="checkbox" aria-checked="${d.checked?"true":"false"}" aria-label="En el carrito: ${esc(d.name)}" data-check="${esc(id)}">${d.checked?checkSvg:""}</button>
     ${d.checked?"":thumbHtml(d)}
     <button class="body" type="button" data-open="${esc(id)}"><span class="name">${esc(d.name)}</span>${(meta||badges)?`<span class="meta">${badges}${esc(meta)}</span>`:""}</button>
-    ${d.checked?`<span class="q">${esc(fmtQty(d))}</span>`:`<div class="stepper"><button type="button" data-dec="${esc(id)}" aria-label="Menos ${esc(d.name)}">−</button><span>${esc(fmtQty(d))}</span><button type="button" class="plus" data-inc="${esc(id)}" aria-label="Más ${esc(d.name)}">+</button></div>`}
+    ${d.checked?`<span class="q">${esc(fmtQty(d))}</span>`:`<div class="stepper">${(Number(d.qty)||0)<=stepOf(d)?`<button type="button" class="del" data-dec="${esc(id)}" aria-label="Quitar ${esc(d.name)} de la lista" title="Quitar de la lista">${TRASH_SVG}</button>`:`<button type="button" data-dec="${esc(id)}" aria-label="Menos ${esc(d.name)}">−</button>`}<span>${esc(fmtQty(d))}</span><button type="button" class="plus" data-inc="${esc(id)}" aria-label="Más ${esc(d.name)}">+</button></div>`}
   </div></div>`;
 }
 const byCreated=(a,b)=>(a[1].createdAt||0)-(b[1].createdAt||0);
@@ -1017,6 +1019,7 @@ function toggleChecked(id){
 }
 function stepItem(id,dir){
   const d=items[id];if(!d||d.deleted)return;const st=stepOf(d);
+  if(dir<0&&(Number(d.qty)||0)<=st){swipeAway(id);return}
   setItem(id,Object.assign({},d,{qty:Math.max(st,Math.round(((Number(d.qty)||0)+dir*st)*100)/100)}));
 }
 function snapshot(ids){const o={};ids.forEach(id=>{o[id]=items[id]?JSON.parse(JSON.stringify(items[id])):null});return o}
@@ -1030,36 +1033,44 @@ function swipeAway(id){
 
 /* ================= gestos: deslizar tarjetas ================= */
 let drag=null,dragEndAt=0;
-$("list").addEventListener("pointerdown",e=>{
-  if(e.button>0||e.target.closest(".stepper"))return;
-  const card=e.target.closest(".card[data-id]");if(!card)return;
-  drag={card,sw:card.parentElement,id:card.dataset.id,x0:e.clientX,y0:e.clientY,dx:0,lock:null,pid:e.pointerId,armed:false};
-});
-$("list").addEventListener("pointermove",e=>{
-  if(!drag||e.pointerId!==drag.pid)return;
-  const dx=e.clientX-drag.x0,dy=e.clientY-drag.y0;
-  if(!drag.lock){
-    if(Math.abs(dx)>10&&Math.abs(dx)>Math.abs(dy)*1.2){drag.lock="x";try{drag.card.setPointerCapture(e.pointerId)}catch(err){}drag.card.style.transition="none"}
-    else if(Math.abs(dy)>10){drag=null;return}
-  }
-  if(drag.lock!=="x")return;
-  drag.dx=dx;drag.card.style.transform=`translateX(${dx}px)`;
-  drag.sw.classList.toggle("r",dx>0);drag.sw.classList.toggle("l",dx<0);
-  const armed=Math.abs(dx)>90;
-  if(armed!==drag.armed){drag.armed=armed;drag.sw.classList.toggle("arm",armed);if(armed){try{if(navigator.vibrate)navigator.vibrate(10)}catch(err){}}}
-});
-function endDrag(e){
-  if(!drag||(e&&e.pointerId!==drag.pid))return;
-  const d=drag;drag=null;
-  if(d.lock!=="x"){if(renderPending)render();return}
-  dragEndAt=Date.now();d.card.style.transition="";
-  if(d.dx<-90){d.card.style.transform="translateX(-110%)";setTimeout(()=>swipeAway(d.id),170);return}
-  d.card.style.transform="";
-  setTimeout(()=>{d.sw.classList.remove("r","l","arm")},280);
-  if(d.dx>90)toggleChecked(d.id);else if(renderPending)render();
+function bindSwipe(el,opts){
+  el.addEventListener("pointerdown",e=>{
+    if(e.button>0||e.target.closest(".stepper"))return;
+    const card=e.target.closest(".card[data-id]");if(!card||!card.parentElement.classList.contains("sw"))return;
+    drag={card,sw:card.parentElement,id:card.dataset.id,x0:e.clientX,y0:e.clientY,dx:0,lock:null,pid:e.pointerId,armed:false,opts};
+  });
+  el.addEventListener("pointermove",e=>{
+    if(!drag||drag.opts!==opts||e.pointerId!==drag.pid)return;
+    let dx=e.clientX-drag.x0;const dy=e.clientY-drag.y0;
+    if(!drag.lock){
+      if(Math.abs(dx)>10&&Math.abs(dx)>Math.abs(dy)*1.2){drag.lock="x";try{drag.card.setPointerCapture(e.pointerId)}catch(err){}drag.card.style.transition="none"}
+      else if(Math.abs(dy)>10){drag=null;return}
+    }
+    if(drag.lock!=="x")return;
+    if(!opts.right)dx=Math.min(0,dx);
+    drag.dx=dx;drag.card.style.transform=`translateX(${dx}px)`;
+    drag.sw.classList.toggle("r",dx>0);drag.sw.classList.toggle("l",dx<0);
+    const armed=Math.abs(dx)>90;
+    if(armed!==drag.armed){drag.armed=armed;drag.sw.classList.toggle("arm",armed);if(armed){try{if(navigator.vibrate)navigator.vibrate(10)}catch(err){}}}
+  });
+  const end=e=>{
+    if(!drag||drag.opts!==opts||(e&&e.pointerId!==drag.pid))return;
+    const d=drag;drag=null;
+    if(d.lock!=="x"){if(renderPending)render();return}
+    dragEndAt=Date.now();d.card.style.transition="";
+    if(d.dx<-90){d.card.style.transform="translateX(-110%)";setTimeout(()=>opts.left(d.id),170);return}
+    d.card.style.transform="";
+    setTimeout(()=>{d.sw.classList.remove("r","l","arm")},280);
+    if(d.dx>90&&opts.right)opts.right(d.id);else if(renderPending)render();
+  };
+  el.addEventListener("pointerup",end);el.addEventListener("pointercancel",end);
 }
-$("list").addEventListener("pointerup",endDrag);
-$("list").addEventListener("pointercancel",endDrag);
+bindSwipe($("list"),{left:id=>swipeAway(id),right:id=>toggleChecked(id)});
+bindSwipe($("habList"),{left:id=>forgetHab(id)});
+function forgetHab(id){
+  const d=items[id];if(!d||d.deleted)return;const sn=snapshot([id]);
+  delItem(id);toast(d.name+" borrado de Habituales",()=>restore(sn));
+}
 
 /* ================= añadir rápido con sugerencias ================= */
 function parseQ(v){
@@ -1140,7 +1151,7 @@ function renderHabs(){
   $("habList").innerHTML=present.map(k=>{
     const fk=(byStore?"s:":"a:")+k,open=!ui.folded[fk],its=habs.filter(([,d])=>keyOf(d)===k);
     return `<section class="group"><div class="ghead"><button type="button" class="fold" data-fold="${esc(fk)}" aria-expanded="${open}"><span class="sq" style="background:${colOf(k)}"></span>${esc(byStore&&k!=="Donde sea"?"En "+k:k)} <span style="opacity:.7">· ${its.length}</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>${byStore&&k!=="Donde sea"?`<button type="button" class="btn small" data-addall="${esc(k)}" style="background:${colOf(k)};color:#fff">+ Añadir todo</button>`:""}</div>
-    ${open?its.map(([id,d])=>{const meta=[d.pref,timesTxt(d.timesBought||0)].filter(Boolean).join(" · ");return `<div class="card fadein">${thumbHtml(d)}<button class="body" type="button" data-hopen="${esc(id)}"><span class="name">${esc(d.name)}</span><span class="meta">${d.off?nsBadge(d.off.ns):""}${storeBadge(d)}${esc(meta)}</span></button><button type="button" class="plusbtn" data-readd="${esc(id)}" aria-label="Añadir ${esc(d.name)} a la lista">+</button></div>`}).join(""):""}</section>`;
+    ${open?its.map(([id,d])=>{const meta=[d.pref,timesTxt(d.timesBought||0)].filter(Boolean).join(" · ");return `<div class="sw"><div class="reveal" aria-hidden="true"><span class="rl"></span><span class="rr">Borrar para siempre</span></div><div class="card fadein" data-id="${esc(id)}">${thumbHtml(d)}<button class="body" type="button" data-hopen="${esc(id)}"><span class="name">${esc(d.name)}</span><span class="meta">${d.off?nsBadge(d.off.ns):""}${storeBadge(d)}${esc(meta)}</span></button><button type="button" class="plusbtn" data-readd="${esc(id)}" aria-label="Añadir ${esc(d.name)} a la lista">+</button></div></div>`}).join(""):""}</section>`;
   }).join("");
 }
 function addMany(ids,label){
@@ -1151,6 +1162,7 @@ function addMany(ids,label){
 $("segHab").addEventListener("click",e=>{const b=e.target.closest("[data-by]");if(!b)return;ui.habBy=b.dataset.by;saveUi();render()});
 $("addTop").addEventListener("click",()=>addMany(habTop().map(([id])=>id),"Añadido lo de siempre"));
 $("habList").addEventListener("click",e=>{
+  if(Date.now()-dragEndAt<350)return;
   const f=e.target.closest("[data-fold]");if(f){const k=f.dataset.fold;ui.folded[k]=!ui.folded[k];saveUi();render();return}
   const all=e.target.closest("[data-addall]");if(all){const k=all.dataset.addall;addMany(archived().filter(([,d])=>(storeOf(d)||{}).name===k).map(([id])=>id),"Añadido todo lo de "+k);return}
   const r=e.target.closest("[data-readd]");if(r){const d=items[r.dataset.readd];if(d&&d.archived){const sn=snapshot([r.dataset.readd]);readd(r.dataset.readd);toast(`${d.name} añadido a la lista`,()=>restore(sn))}return}
