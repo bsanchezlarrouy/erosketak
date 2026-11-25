@@ -89,6 +89,11 @@ h1{font-family:var(--font-display);font-weight:800;font-size:30px;line-height:1.
 .prog{background:var(--accent);color:var(--accent-ink);border-radius:22px;padding:16px 18px;display:flex;flex-direction:column;gap:10px}
 .prog .big{font-family:var(--font-display);font-weight:800;font-size:34px;line-height:1}
 .prog .big small{font-size:16px;font-weight:600}
+.excl{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.excl-t{font-size:12px;font-weight:700;opacity:.9}
+.exclpill{display:inline-flex;align-items:center;gap:5px;border:0;background:#fff;border-radius:99px;padding:4px 4px 4px 10px;min-height:32px;font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:.03em;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.exclpill svg{width:12px;height:12px}
+.exclpill b{color:#fff;border-radius:99px;min-width:22px;height:22px;display:grid;place-items:center;font-size:12px;padding:0 6px}
 .bar{height:8px;border-radius:99px;background:rgba(255,255,255,.25);overflow:hidden}
 .bar i{display:block;height:100%;border-radius:99px;background:var(--scan);transition:width .4s ease}
 .seg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));background:var(--soft);border-radius:14px;padding:4px;gap:4px}
@@ -287,7 +292,7 @@ h1{font-family:var(--font-display);font-weight:800;font-size:30px;line-height:1.
       <div class="chiprow noscroll" id="quickChips" aria-label="Lo que más compráis"></div>
     </div>
     <div class="prog" id="prog" hidden>
-      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap"><span class="big" id="progLeft"></span><span id="progTxt" style="font-size:13px;opacity:.9"></span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px 12px;flex-wrap:wrap"><span style="display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap"><span class="big" id="progLeft"></span><span class="excl" id="progStores" hidden></span></span><span id="progTxt" style="font-size:13px;opacity:.9"></span></div>
       <div class="bar"><i id="progBar" style="width:0"></i></div>
       <span style="font-size:12px;opacity:.85">Desliza a la derecha para meter en el carrito, a la izquierda para quitar</span>
     </div>
@@ -1029,6 +1034,10 @@ function renderLista(){
   $("prog").hidden=!total;
   $("progLeft").innerHTML=`${pend.length} <small>por comprar</small>`;
   $("progTxt").textContent=`${done.length} de ${total} en el carrito`;
+  const ex={};pend.forEach(([,d])=>{const st=storeOf(d);if(st&&st.brand)ex[st.name]=(ex[st.name]||0)+1});
+  const exk=STORES.map(z=>z[0]).filter(k=>ex[k]);
+  $("progStores").hidden=!exk.length;
+  $("progStores").innerHTML=exk.length?`<span class="excl-t">Solo en:</span>`+exk.map(k=>`<button type="button" class="exclpill" data-excl="${esc(k)}" style="color:${STORE_COL[k]}" aria-label="${ex[k]} ${ex[k]===1?"producto":"productos"} que solo se venden en ${esc(k)}">${SHOP_SVG}${esc(k)}<b style="background:${STORE_COL[k]}">${ex[k]}</b></button>`).join(""):"";
   $("progBar").style.width=(total?Math.round(done.length/total*100):0)+"%";
   segUi($("segList"),ui.by);$("segList").hidden=!pend.length;
   const byStore=ui.by==="store";
@@ -1049,6 +1058,7 @@ function renderLista(){
   $("list").innerHTML=h;
 }
 $("segList").addEventListener("click",e=>{const b=e.target.closest("[data-by]");if(!b)return;ui.by=b.dataset.by;ui.filter="Todo";saveUi();render()});
+$("progStores").addEventListener("click",e=>{const b=e.target.closest("[data-excl]");if(!b)return;ui.by="store";ui.filter=b.dataset.excl;saveUi();render();const g=$("list").querySelector(".group");if(g)g.scrollIntoView({behavior:"smooth",block:"start"})});
 $("chips").addEventListener("click",e=>{const b=e.target.closest("[data-filter]");if(!b)return;ui.filter=b.dataset.filter;render()});
 $("list").addEventListener("click",e=>{
   if(Date.now()-dragEndAt<350)return;
