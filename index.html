@@ -454,7 +454,7 @@ h1{font-family:var(--font-display);font-weight:800;font-size:30px;line-height:1.
 <script>
 (function(){
 "use strict";
-const CATS=[["Fruta","#d9662b"],["Verduras","#3a9d4f"],["Panadería","#9a6a1e"],["Carne y pescado","#c8473d"],["Embutidos","#9c3d5e"],["Lácteos y huevos","#a07c00"],["Despensa","#a0703c"],["Congelados","#3c7fc8"],["Bebidas","#2a8f8c"],["Limpieza","#7b5cc4"],["Higiene","#c4528f"],["Otros","#6b7a70"]];
+const CATS=[["Fruta","#d9662b"],["Verduras","#3a9d4f"],["Panadería","#9a6a1e"],["Carne y pescado","#c8473d"],["Embutidos","#9c3d5e"],["Vegetarianos","#6f8f00"],["Lácteos y huevos","#a07c00"],["Despensa","#a0703c"],["Congelados","#3c7fc8"],["Bebidas","#2a8f8c"],["Limpieza","#7b5cc4"],["Higiene","#c4528f"],["Otros","#6b7a70"]];
 const CAT_NAMES=CATS.map(c=>c[0]);
 const CAT_COL=Object.fromEntries(CATS);
 const STORES=[["Mercadona","#1b7a3e"],["Eroski","#c4001a"],["Carrefour","#1d4f9c"],["Lidl","#8a6200"],["Dia","#6d2a7a"],["Veritas","#0f6f7a"]];
@@ -621,7 +621,7 @@ async function sync(){
     items=merged;if(localChanged){persist();render()}
     if(rowsSig(merged)!==rowsSig(remote)){await pushRemote(merged);setTimeout(()=>scheduleSync(0),4000)}
     lastSync=Date.now();syncErr="";syncErrStatus=0;sheetState="ok";setSyncUi("ok");
-    let mig=false;try{mig=!localStorage.getItem("pasillos-v2")}catch(e){}
+    let mig=false;try{mig=!localStorage.getItem("pasillos-v3")}catch(e){}
     if((mig||Object.values(items).some(d=>d&&!d.deleted&&d.cat==="Fruta y verdura"))&&migrateCats())render();
   }catch(e){
     syncErr=e instanceof ApiError?e.message:apiMsg(0);syncErrStatus=e instanceof ApiError?e.status:0;
@@ -774,6 +774,7 @@ async function startup(){
 function guessCat(name){
   const n=(name||"").toLowerCase();
   const rules=[
+    ["Vegetarianos",/(tofu|tempeh|seit[aá]n|heura|soja texturizada|prote[ií]na vegetal|vegan[oa]s?\b|veggie|vegetarian[oa]|beyond meat|garden gourmet|(hamburguesa|burger|salchicha|nuggets?|alb[oó]ndigas?|carne|picada|filetes?|escalopes?)s? (vegetal|vegetales|de soja|de guisantes))/],
     ["Embutidos",/(jam[oó]n|chorizo|salchich[oó]n|fuet|mortadela|fiambre|salami|sobrasada|cecina|longaniza|lomo embuchado|morcilla|pavo (en lonchas|cocido|braseado)|pechuga de pavo|chopped|embutido|butifarra)/],
     ["Fruta",/(manzana|naranja|pl[aá]tano|\bpera|\buva|fresa|lim[oó]n|aguacate|fruta|mel[oó]n|sand[ií]a|kiwi|mandarina|pi[ñn]a\b|mango|melocot[oó]n|nectarina|cereza|ciruela|frambuesa|ar[aá]ndano|granada|higo|papaya|pomelo|lima\b|albaricoque)/],
     ["Verduras",/(tomate(?! frito)|lechuga|cebolla|\bajo|patata|zanahoria|pimiento|calabac|pepino|verdura|espinaca|br[oó]coli|champi[ñn]|setas|coliflor|col\b|repollo|puerro|jud[ií]a verde|berenjena|r[aá]bano|r[uú]cula|can[oó]nigos|ensalada|apio|alcachofa|esp[aá]rrago|acelga|calabaza|boniato|jengibre|perejil|cilantro|albahaca)/],
@@ -795,6 +796,7 @@ function catFromOff(tags,name){
   if(has(/en:frozen/))return "Congelados";
   if(has(/en:beverages|en:waters|en:sodas|en:juices|en:beers|en:wines|en:alcoholic/))return has(/en:plant-based-milk|en:milks/)?"Lácteos y huevos":"Bebidas";
   if(has(/en:dairies|en:milks|en:cheeses|en:yogurts|en:eggs|en:butters|en:creams/))return "Lácteos y huevos";
+  if(has(/en:meat-analogues|en:meat-alternatives|en:tofu|en:tempeh|en:seitan|en:vegetarian-|en:vegan-(burgers|sausages|nuggets)/))return "Vegetarianos";
   if(has(/en:hams|en:cured-meats|en:sausages|en:prepared-meats|en:cold-cuts|en:salamis|en:chorizos/))return "Embutidos";
   if(has(/en:meats|en:fishes|en:seafood|en:poultr/))return "Carne y pescado";
   if(has(/en:breads|en:viennoiseries|en:pastries/))return "Panadería";
@@ -1517,15 +1519,16 @@ window.addEventListener("hashchange",()=>{if(location.hash.startsWith("#hoja=")|
 setTab("lista");
 function migrateCats(){
   /* «Fruta y verdura» se separa en Fruta y Verduras; los embutidos salen de «Carne y pescado» (una sola vez por dispositivo) */
-  let n=0;const now=Date.now();let firstRun=false;try{firstRun=!localStorage.getItem("pasillos-v2")}catch(e){}
+  let n=0;const now=Date.now();let firstRun=false,firstVeg=false;try{firstRun=!localStorage.getItem("pasillos-v2");firstVeg=!localStorage.getItem("pasillos-v3")}catch(e){}
   for(const [id,d] of Object.entries(items)){
     if(!d||d.deleted)continue;
     let c=null;
     if(d.cat==="Fruta y verdura"){const g=guessCat(d.name);c=g==="Fruta"||g==="Verduras"?g:(d.off&&catFromOff(d.off.cats,d.name)==="Fruta"?"Fruta":"Verduras")}
     else if(firstRun&&d.cat==="Carne y pescado"&&guessCat(d.name)==="Embutidos")c="Embutidos";
+    else if(firstVeg&&d.cat!=="Vegetarianos"&&(guessCat(d.name)==="Vegetarianos"||(d.off&&catFromOff(d.off.cats,d.name)==="Vegetarianos")))c="Vegetarianos";
     if(c&&c!==d.cat){items[id]=Object.assign({},d,{cat:c,updatedAt:now});n++}
   }
-  if(live().length){try{localStorage.setItem("pasillos-v2","1")}catch(e){}}
+  if(live().length){try{localStorage.setItem("pasillos-v2","1");localStorage.setItem("pasillos-v3","1")}catch(e){}}
   if(n){persist();scheduleSync(1500)}
   return n;
 }
