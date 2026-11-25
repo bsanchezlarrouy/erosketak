@@ -108,8 +108,14 @@ h1{font-family:var(--font-display);font-weight:800;font-size:30px;line-height:1.
 .sw{position:relative;border-radius:18px;overflow:hidden}
 .sw .reveal{position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 20px;color:#fff;font-weight:700;font-size:14px;opacity:0}
 .sw.r .reveal{background:var(--good);opacity:1}.sw.l .reveal{background:var(--bad);opacity:1}
-.sw.r .reveal .rl,.sw.l .reveal .rr{visibility:hidden}
-.sw.arm .reveal span{transform:scale(1.12)}
+.sw.r .reveal .rr,.sw.l .reveal .rl{visibility:hidden}
+.reveal>span{display:inline-flex;align-items:center;gap:10px;transition:transform .15s;line-height:1.2}
+.reveal .rr{text-align:right}
+.reveal svg{width:24px;height:24px;flex:none}
+.reveal small{display:block;font-size:11px;font-weight:600;opacity:.85}
+.reveal b{display:block;font-size:15px}
+.reveal .hint{display:block}.reveal .go{display:none}.sw.arm .reveal .go{display:block}.sw.arm .reveal .hint{display:none}
+.sw.arm .reveal>span{transform:scale(1.06)}
 .card{position:relative;display:flex;align-items:center;gap:12px;padding:10px 10px 10px 12px;background:var(--surface);border-radius:18px;touch-action:pan-y;user-select:none;-webkit-user-select:none;transition:transform .28s cubic-bezier(.2,.8,.2,1),box-shadow .3s;box-shadow:0 1px 2px rgba(20,40,28,.06)}
 .card.flash{box-shadow:0 0 0 3px var(--scan)}
 .check{width:30px;height:30px;flex:none;border-radius:50%;border:2px solid var(--line);background:var(--surface);display:grid;place-items:center;padding:0;color:#fff}
@@ -955,6 +961,11 @@ function infoHtml(o,fallbackName){
 const SHOP_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M4 10l2-6h12l2 6M4 10h16v10H4zM9 20v-5h6v5"/></svg>';
 const HEART_SVG='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.6-7 10-7 10z"/></svg>';
 const TRASH_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="width:18px;height:18px;vertical-align:middle"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>';
+const R_CART='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M3 4h2l2.5 11h11L21 7H6.2"/><circle cx="9.5" cy="19.5" r="1.5"/><circle cx="17" cy="19.5" r="1.5"/></svg>';
+const R_UNDO='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>';
+const R_HEART='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M12 21s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.6-7 10-7 10z"/></svg>';
+const R_TRASH='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>';
+const revealSide=(cls,icon,txt,sub)=>`<span class="${cls}">${cls==="rl"?icon:""}<span><b>${txt}</b><small class="hint">${sub||""}</small><small class="go">¡Suelta!</small></span>${cls==="rr"?icon:""}</span>`;
 const checkSvg='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>';
 const BRAND_WORDS=/\b(hacendado|deliplus|bosque verde|compy|eroski(?: basic| natur| seleqtia| sannia| belle)?|carrefour(?: classic| extra| bio| discount)?|d[ií]a|milbona|cien|w5|chef select|freeway|solevita|pilos|veritas)\b/gi;
 function stripBrand(t,extra){
@@ -1018,7 +1029,7 @@ function segUi(el,by){el.querySelectorAll("button").forEach(b=>b.setAttribute("a
 function rowHtml(id,d){
   const meta=[d.once?"Solo esta vez":"",d.anyBrand?"cualquier marca":"",d.pref,d.notes,d.addedBy&&d.addedBy!==deviceName?"lo añadió "+d.addedBy:""].filter(Boolean).join(" · ");
   const badges=(d.off?nsBadge(d.off.ns):"")+storeBadge(d);
-  return `<div class="sw"><div class="reveal" aria-hidden="true"><span class="rl">${d.checked?"Sacar del carrito":"Al carrito"}</span><span class="rr">${d.once?"Borrar":"A Habituales"}</span></div>
+  return `<div class="sw"><div class="reveal" aria-hidden="true">${revealSide("rl",d.checked?R_UNDO:R_CART,d.checked?"Sacar":"Al carrito",d.checked?"del carrito":"")}${revealSide("rr",d.once?R_TRASH:R_HEART,d.once?"Borrar":"Quitar",d.once?"solo esta vez":"a Habituales")}</div>
   <div class="card item${d.checked?" done":""}${flashId===id?" flash":""}" data-id="${esc(id)}">
     <button class="check" type="button" role="checkbox" aria-checked="${d.checked?"true":"false"}" aria-label="En el carrito: ${esc(d.name)}" data-check="${esc(id)}">${d.checked?checkSvg:""}</button>
     ${d.checked?"":thumbHtml(d)}
@@ -1208,7 +1219,7 @@ function renderHabs(){
   $("habList").innerHTML=present.map(k=>{
     const fk=(byStore?"s:":"a:")+k,open=!ui.folded[fk],its=habs.filter(([,d])=>keyOf(d)===k);
     return `<section class="group"><div class="ghead"><button type="button" class="fold" data-fold="${esc(fk)}" aria-expanded="${open}"><span class="sq" style="background:${colOf(k)}"></span>${esc(byStore&&k!=="Donde sea"?"En "+k:k)} <span style="opacity:.7">· ${its.length}</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>${byStore&&k!=="Donde sea"?`<button type="button" class="btn small" data-addall="${esc(k)}" style="background:${colOf(k)};color:#fff">+ Añadir todo</button>`:""}</div>
-    ${open?its.map(([id,d])=>{const meta=[d.pref,timesTxt(d.timesBought||0)].filter(Boolean).join(" · ");return `<div class="sw"><div class="reveal" aria-hidden="true"><span class="rl"></span><span class="rr">Borrar para siempre</span></div><div class="card fadein" data-id="${esc(id)}">${thumbHtml(d)}<button class="body" type="button" data-hopen="${esc(id)}"><span class="name">${esc(d.name)}</span><span class="meta">${d.off?nsBadge(d.off.ns):""}${storeBadge(d)}${esc(meta)}</span></button><button type="button" class="plusbtn" data-readd="${esc(id)}" aria-label="Añadir ${esc(d.name)} a la lista">+</button></div></div>`}).join(""):""}</section>`;
+    ${open?its.map(([id,d])=>{const meta=[d.pref,timesTxt(d.timesBought||0)].filter(Boolean).join(" · ");return `<div class="sw"><div class="reveal" aria-hidden="true"><span class="rl"></span>${revealSide("rr",R_TRASH,"Borrar","para siempre")}</div><div class="card fadein" data-id="${esc(id)}">${thumbHtml(d)}<button class="body" type="button" data-hopen="${esc(id)}"><span class="name">${esc(d.name)}</span><span class="meta">${d.off?nsBadge(d.off.ns):""}${storeBadge(d)}${esc(meta)}</span></button><button type="button" class="plusbtn" data-readd="${esc(id)}" aria-label="Añadir ${esc(d.name)} a la lista">+</button></div></div>`}).join(""):""}</section>`;
   }).join("");
 }
 function addMany(ids,label){
