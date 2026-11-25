@@ -319,6 +319,11 @@ h1{font-family:var(--font-display);font-weight:800;font-size:30px;line-height:1.
     </div>
     <p class="help" id="habHint" hidden>¿Estás en uno de estos súper? Aprovecha y añade lo que os gusta de allí aunque no esté en la lista.</p>
     <div id="habList" style="display:flex;flex-direction:column;gap:10px"></div>
+    <section class="group" id="trashBox" hidden>
+      <div class="ghead"><button type="button" class="fold" id="trashFold" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="width:16px;height:16px;margin:0;transform:none"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg><span id="trashTxt">Eliminados recientemente</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></div>
+      <p class="help" id="trashHelp" hidden>Lo eliminado de la app se puede recuperar durante 30 días. Al recuperarlo vuelve a Habituales.</p>
+      <div id="trashList" style="display:flex;flex-direction:column;gap:8px"></div>
+    </section>
   </section>
 
   <!-- BUSCAR -->
@@ -457,7 +462,7 @@ h1{font-family:var(--font-display);font-weight:800;font-size:30px;line-height:1.
     <div class="confirm" id="pDelConfirm" hidden>
       <span id="pDelMsg">¿Quitar este producto de la lista?</span>
       <div class="actions"><button class="btn ghost" type="button" id="pDelNo">No</button><button class="btn" type="button" id="pDelYes">Sí</button></div>
-      <button class="btn danger" type="button" id="pDelHard" hidden>Borrar del todo (no va a Habituales)</button>
+      <button class="btn danger" type="button" id="pDelHard" hidden>Eliminar de la app (no queda en Habituales)</button>
     </div>
   </form>
 </div>
@@ -549,7 +554,9 @@ const stamp=d=>(d&&(d.updatedAt||d.createdAt))||0;
 const DEV_KEY="lista-compra-dispositivo";
 let deviceName="";try{deviceName=localStorage.getItem(DEV_KEY)||""}catch(e){}
 function setItem(id,d){const isNew=!items[id]||items[id].deleted;items[id]=Object.assign({},d,{updatedAt:Date.now()},isNew&&deviceName&&!d.addedBy?{addedBy:deviceName}:{});persist();render();scheduleSync()}
-function delItem(id){items[id]={deleted:true,updatedAt:Date.now()};persist();render();scheduleSync()}
+const tomb=(d,now)=>Object.assign({},d,{deleted:true,checked:false,photo:"",updatedAt:now||Date.now()});
+function delItem(id){const d=items[id];items[id]=d&&!d.deleted&&d.name?tomb(d):{deleted:true,updatedAt:Date.now()};persist();render();scheduleSync()}
+const trashed=()=>Object.entries(items).filter(([,d])=>d&&d.deleted&&d.name&&Date.now()-stamp(d)<30*864e5);
 
 /* ================= sincronización con Google Sheets =================
    La página es pública; los datos viven en una hoja de Google del usuario.
@@ -615,16 +622,17 @@ const toISO=ms=>ms?new Date(ms).toISOString():"";
 const fromISO=s=>{if(typeof s==="number")return s;const t=Date.parse(s||"");return isNaN(t)?0:t};
 const yes=v=>v===true||/^(true|verdadero|s[ií]|x|1)$/i.test(String(v==null?"":v).trim());
 function toRow(id,d){
-  if(d.deleted)return [id,"","","","","","","","","","","","",toISO(d.updatedAt),"sí","","","","","",""];
-  return [id,d.name||"",Number(d.qty)||1,d.unit||"ud",d.cat||"Otros",d.pref||"",d.notes||"",d.barcode||"",!!d.checked,!!d.archived,d.timesBought||0,d.addedBy||"",toISO(d.createdAt),toISO(d.updatedAt),"",d.off?JSON.stringify(d.off):"",d.photoKey||"",d.fav||"",!!d.once,!!d.anyBrand,d.imgUrl||""];
+  if(d.deleted&&!d.name)return [id,"","","","","","","","","","","","",toISO(d.updatedAt),"sí","","","","","",""];
+  return [id,d.name||"",Number(d.qty)||1,d.unit||"ud",d.cat||"Otros",d.pref||"",d.notes||"",d.barcode||"",!!d.checked,!!d.archived,d.timesBought||0,d.addedBy||"",toISO(d.createdAt),toISO(d.updatedAt),d.deleted?"sí":"",d.off?JSON.stringify(d.off):"",d.photoKey||"",d.fav||"",!!d.once,!!d.anyBrand,d.imgUrl||""];
 }
 function fromRow(r){
   const g=i=>r[i]==null?"":r[i];
   const id=String(g(0)).trim();if(!id||id==="id")return null;
   const upd=fromISO(g(13));
-  if(yes(g(14)))return [id,{deleted:true,updatedAt:upd}];
+  const del=yes(g(14));
+  if(del&&!String(g(1)).trim())return [id,{deleted:true,updatedAt:upd}];
   let off=null;try{off=g(15)?JSON.parse(g(15)):null}catch(e){off=null}
-  return [id,{name:String(g(1)),qty:Number(String(g(2)).replace(",","."))||1,unit:String(g(3)||"ud"),cat:String(g(4)||"Otros"),pref:String(g(5)),notes:String(g(6)),barcode:String(g(7)),checked:yes(g(8)),archived:yes(g(9)),timesBought:Number(g(10))||0,addedBy:String(g(11)),createdAt:fromISO(g(12)),updatedAt:upd,off,photoKey:String(g(16)),photo:"",fav:String(g(17)||""),once:yes(g(18)),anyBrand:yes(g(19)),imgUrl:String(g(20)||"")}];
+  return [id,Object.assign({name:String(g(1)),qty:Number(String(g(2)).replace(",","."))||1,unit:String(g(3)||"ud"),cat:String(g(4)||"Otros"),pref:String(g(5)),notes:String(g(6)),barcode:String(g(7)),checked:yes(g(8)),archived:yes(g(9)),timesBought:Number(g(10))||0,addedBy:String(g(11)),createdAt:fromISO(g(12)),updatedAt:upd,off,photoKey:String(g(16)),photo:"",fav:String(g(17)||""),once:yes(g(18)),anyBrand:yes(g(19)),imgUrl:String(g(20)||"")},del?{deleted:true}:{})];
 }
 let remoteRows=0;
 async function pullRemote(){
@@ -1029,7 +1037,7 @@ function segUi(el,by){el.querySelectorAll("button").forEach(b=>b.setAttribute("a
 function rowHtml(id,d){
   const meta=[d.once?"Solo esta vez":"",d.anyBrand?"cualquier marca":"",d.pref,d.notes,d.addedBy&&d.addedBy!==deviceName?"lo añadió "+d.addedBy:""].filter(Boolean).join(" · ");
   const badges=(d.off?nsBadge(d.off.ns):"")+storeBadge(d);
-  return `<div class="sw"><div class="reveal" aria-hidden="true">${revealSide("rl",d.checked?R_UNDO:R_CART,d.checked?"Sacar":"Al carrito",d.checked?"del carrito":"")}${revealSide("rr",d.once?R_TRASH:R_HEART,d.once?"Borrar":"Quitar",d.once?"solo esta vez":"a Habituales")}</div>
+  return `<div class="sw"><div class="reveal" aria-hidden="true">${revealSide("rl",d.checked?R_UNDO:R_CART,d.checked?"Sacar":"Al carrito",d.checked?"del carrito":"")}${revealSide("rr",d.once?R_TRASH:R_HEART,d.once?"Eliminar":"Quitar de la lista",d.once?"de la app":"queda en Habituales")}</div>
   <div class="card item${d.checked?" done":""}${flashId===id?" flash":""}" data-id="${esc(id)}">
     <button class="check" type="button" role="checkbox" aria-checked="${d.checked?"true":"false"}" aria-label="En el carrito: ${esc(d.name)}" data-check="${esc(id)}">${d.checked?checkSvg:""}</button>
     ${d.checked?"":thumbHtml(d)}
@@ -1094,9 +1102,9 @@ function snapshot(ids){const o={};ids.forEach(id=>{o[id]=items[id]?JSON.parse(JS
 function restore(sn){const now=Date.now();Object.entries(sn).forEach(([id,d])=>{items[id]=d&&!d.deleted?Object.assign({},d,{updatedAt:now}):{deleted:true,updatedAt:now}});persist();render();scheduleSync(300)}
 function swipeAway(id){
   const d=items[id];if(!d||d.deleted)return;const sn=snapshot([id]);
-  if(d.once){delItem(id);toast(d.name+" borrado",()=>restore(sn));return}
+  if(d.once){delItem(id);toast(d.name+" eliminado de la app",()=>restore(sn));return}
   setItem(id,Object.assign({},d,{archived:true,checked:false,timesBought:(d.timesBought||0)+(d.checked?1:0)}));
-  toast(d.name+" → Habituales",()=>restore(sn),{label:"Borrar",fn:()=>{delItem(id);toast(d.name+" borrado",()=>restore(sn))}});
+  toast(d.name+" quitado de la lista · queda en Habituales",()=>restore(sn),{label:"Eliminar de la app",fn:()=>{delItem(id);toast(d.name+" eliminado de la app",()=>restore(sn))}});
 }
 
 /* ================= gestos: deslizar tarjetas ================= */
@@ -1137,7 +1145,7 @@ bindSwipe($("list"),{left:id=>swipeAway(id),right:id=>toggleChecked(id)});
 bindSwipe($("habList"),{left:id=>forgetHab(id)});
 function forgetHab(id){
   const d=items[id];if(!d||d.deleted)return;const sn=snapshot([id]);
-  delItem(id);toast(d.name+" borrado de Habituales",()=>restore(sn));
+  delItem(id);toast(d.name+" eliminado de la app",()=>restore(sn));
 }
 
 /* ================= añadir rápido con sugerencias ================= */
@@ -1204,7 +1212,23 @@ $("quickChips").addEventListener("click",e=>{const b=e.target.closest("[data-qch
 
 /* ================= habituales ================= */
 const habTop=()=>archived().filter(([,d])=>(d.timesBought||0)>=3);
+function agoTxt(t){const d=Math.floor((Date.now()-t)/864e5);if(d<1){const h=Math.floor((Date.now()-t)/36e5);return h<1?"hace un momento":`hace ${h} h`}return d===1?"ayer":`hace ${d} días`}
+function renderTrash(){
+  const tr=trashed().sort((a,b)=>stamp(b[1])-stamp(a[1]));
+  $("trashBox").hidden=!tr.length;if(!tr.length)return;
+  const open=!!ui.trashOpen;
+  $("trashFold").setAttribute("aria-expanded",open?"true":"false");$("trashTxt").textContent=`Eliminados recientemente · ${tr.length}`;
+  $("trashHelp").hidden=!open;
+  $("trashList").innerHTML=open?tr.map(([id,d])=>`<div class="card">${thumbHtml(d)}<span class="body"><span class="name">${esc(d.name)}</span><span class="meta">Eliminado ${esc(agoTxt(stamp(d)))}${d.pref?" · "+esc(d.pref):""}</span></span><button type="button" class="btn small ghost" data-recover="${esc(id)}">Recuperar</button></div>`).join(""):"";
+}
+$("trashFold").addEventListener("click",()=>{ui.trashOpen=!ui.trashOpen;renderTrash()});
+$("trashList").addEventListener("click",e=>{
+  const b=e.target.closest("[data-recover]");if(!b)return;const id=b.dataset.recover,d=items[id];if(!d||!d.deleted)return;
+  const r=Object.assign({},d,{archived:true,checked:false,updatedAt:Date.now()});delete r.deleted;
+  items[id]=r;persist();render();scheduleSync();toast(`${d.name} recuperado en Habituales`);
+});
 function renderHabs(){
+  renderTrash();
   const habs=archived().sort((a,b)=>(b[1].timesBought||0)-(a[1].timesBought||0)||String(a[1].name).localeCompare(String(b[1].name),"es"));
   const top=habTop().length;
   $("addTop").hidden=!top;$("addTopTxt").textContent=`Añadir lo de siempre (${top})`;
@@ -1219,7 +1243,7 @@ function renderHabs(){
   $("habList").innerHTML=present.map(k=>{
     const fk=(byStore?"s:":"a:")+k,open=!ui.folded[fk],its=habs.filter(([,d])=>keyOf(d)===k);
     return `<section class="group"><div class="ghead"><button type="button" class="fold" data-fold="${esc(fk)}" aria-expanded="${open}"><span class="sq" style="background:${colOf(k)}"></span>${esc(byStore&&k!=="Donde sea"?"En "+k:k)} <span style="opacity:.7">· ${its.length}</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>${byStore&&k!=="Donde sea"?`<button type="button" class="btn small" data-addall="${esc(k)}" style="background:${colOf(k)};color:#fff">+ Añadir todo</button>`:""}</div>
-    ${open?its.map(([id,d])=>{const meta=[d.pref,timesTxt(d.timesBought||0)].filter(Boolean).join(" · ");return `<div class="sw"><div class="reveal" aria-hidden="true"><span class="rl"></span>${revealSide("rr",R_TRASH,"Borrar","para siempre")}</div><div class="card fadein" data-id="${esc(id)}">${thumbHtml(d)}<button class="body" type="button" data-hopen="${esc(id)}"><span class="name">${esc(d.name)}</span><span class="meta">${d.off?nsBadge(d.off.ns):""}${storeBadge(d)}${esc(meta)}</span></button><button type="button" class="plusbtn" data-readd="${esc(id)}" aria-label="Añadir ${esc(d.name)} a la lista">+</button></div></div>`}).join(""):""}</section>`;
+    ${open?its.map(([id,d])=>{const meta=[d.pref,timesTxt(d.timesBought||0)].filter(Boolean).join(" · ");return `<div class="sw"><div class="reveal" aria-hidden="true"><span class="rl"></span>${revealSide("rr",R_TRASH,"Eliminar","de la app")}</div><div class="card fadein" data-id="${esc(id)}">${thumbHtml(d)}<button class="body" type="button" data-hopen="${esc(id)}"><span class="name">${esc(d.name)}</span><span class="meta">${d.off?nsBadge(d.off.ns):""}${storeBadge(d)}${esc(meta)}</span></button><button type="button" class="plusbtn" data-readd="${esc(id)}" aria-label="Añadir ${esc(d.name)} a la lista">+</button></div></div>`}).join(""):""}</section>`;
   }).join("");
 }
 function addMany(ids,label){
@@ -1248,7 +1272,7 @@ function openFinish(){
 function renderFin(){
   const done=active().filter(([,d])=>d.checked).sort(byCreated);
   $("finList").innerHTML=done.map(([id,d])=>{const on=!!finKeep[id],k=knownHab(id,d),n=((k?k[1].timesBought:d.timesBought)||0)+1;
-    return `<button type="button" class="finrow" role="switch" aria-checked="${on}" data-fin="${esc(id)}">${thumbHtml(d)}<span class="t"><b>${esc(d.name)}</b><small>${on?(n>1?`Habitual · ${n} veces`:"Nuevo en Habituales"):"Puntual · se borrará"}</small></span><span class="trk" aria-hidden="true"></span></button>`}).join("");
+    return `<button type="button" class="finrow" role="switch" aria-checked="${on}" data-fin="${esc(id)}">${thumbHtml(d)}<span class="t"><b>${esc(d.name)}</b><small>${on?(n>1?`Habitual · ${n} veces`:"Nuevo en Habituales"):"Puntual · se eliminará de la app"}</small></span><span class="trk" aria-hidden="true"></span></button>`}).join("");
   const k=done.filter(([id])=>finKeep[id]).length,g=done.length-k;
   $("finOk").textContent=`Guardar ${k} en Habituales`+(g?` · borrar ${g}`:"");
 }
@@ -1260,13 +1284,13 @@ $("finOk").addEventListener("click",()=>{
   const ids=done.map(([id])=>id);done.forEach(([id,d])=>{const k=knownHab(id,d);if(k)ids.push(k[0])});
   const sn=snapshot(ids);let kept=0,gone=0;
   done.forEach(([id,d])=>{
-    if(!finKeep[id]){items[id]={deleted:true,updatedAt:now};gone++;return}
+    if(!finKeep[id]){items[id]=tomb(d,now);gone++;return}
     kept++;const k=knownHab(id,d);
     if(k){items[k[0]]=Object.assign({},k[1],{timesBought:(k[1].timesBought||0)+1,lastBought:now,fav:k[1].fav||d.fav||"",updatedAt:now});items[id]={deleted:true,updatedAt:now}}
     else items[id]=Object.assign({},d,{archived:true,checked:false,once:false,timesBought:(d.timesBought||0)+1,lastBought:now,updatedAt:now});
   });
   persist();render();scheduleSync(300);$("fScrim").hidden=true;
-  toast(`${kept} a Habituales`+(gone?` · ${gone} borrado${gone>1?"s":""}`:""),()=>restore(sn));
+  toast(`${kept} a Habituales`+(gone?` · ${gone} eliminado${gone>1?"s":""}`:""),()=>restore(sn));
 });
 
 /* ================= buscar ================= */
@@ -1336,10 +1360,10 @@ function openSheet({id,off,code,notFound,newName,qty,unit}){
     $("fName").value=existing.name;$("fQty").value=existing.qty;$("fUnit").value=existing.unit||"ud";
     cur.cat=catOf(existing);cur.catSet=true;$("fPref").value=existing.pref||"";$("fNotes").value=existing.notes||"";
     $("pSave").textContent=existing.archived?"Añadir":"Guardar";
-    $("pDelete").textContent=existing.archived?"Borrar de Habituales":(existing.once?"Borrar de la lista":"Quitar de la lista");
-    $("pDelMsg").textContent=existing.archived?"¿Borrar este producto de Habituales para siempre?":(existing.once?"¿Borrar este producto?":"¿Quitar este producto de la lista?");
     const soft=!existing.archived&&!existing.once;
-    $("pDelYes").textContent=soft?"Pasar a Habituales":"Sí, borrar";$("pDelYes").className=soft?"btn":"btn danger";$("pDelNo").textContent=soft?"Cancelar":"No";$("pDelHard").hidden=!soft;
+    $("pDelete").textContent=soft?"Quitar de la lista":"Eliminar de la app";
+    $("pDelMsg").textContent=soft?"¿Qué quieres hacer con este producto?":"Se eliminará de la app, también de Habituales. Podrás recuperarlo durante 30 días en Habituales → Eliminados recientemente.";
+    $("pDelYes").textContent=soft?"Quitar de la lista (queda en Habituales)":"Sí, eliminar";$("pDelYes").className=soft?"btn":"btn danger";$("pDelNo").textContent=soft?"Cancelar":"No";$("pDelHard").hidden=!soft;
     if(existing.archived){const st=storeOf(existing);setBanner(`Habitual · ${timesTxt(existing.timesBought||0)}`+(st?(st.brand?` · solo en ${st.name}`:` · os gusta más en ${st.name}`):""),"hab")}
     else if(existing.checked)setBanner("Ya está en el carrito","inl");
   }else{
@@ -1458,13 +1482,13 @@ $("pDelete").addEventListener("click",()=>{$("pDelConfirm").hidden=false});
 $("pDelNo").addEventListener("click",()=>{$("pDelConfirm").hidden=true});
 $("pDelHard").addEventListener("click",()=>{
   if(!cur||!cur.id)return;const id=cur.id,d=items[id];closeSheet();if(!d)return;
-  const sn=snapshot([id]);delItem(id);toast(d.name+" borrado",()=>restore(sn));
+  const sn=snapshot([id]);delItem(id);toast(d.name+" eliminado de la app",()=>restore(sn));
 });
 $("pDelYes").addEventListener("click",()=>{
   if(!cur||!cur.id)return;const id=cur.id,d=items[id];closeSheet();if(!d)return;
   const sn=snapshot([id]);
-  if(d.archived||d.once){delItem(id);toast(d.name+" borrado",()=>restore(sn))}
-  else{setItem(id,Object.assign({},d,{archived:true,checked:false}));toast("Quitado. Lo tienes en Habituales.",()=>restore(sn))}
+  if(d.archived||d.once){delItem(id);toast(d.name+" eliminado de la app",()=>restore(sn))}
+  else{setItem(id,Object.assign({},d,{archived:true,checked:false}));toast(d.name+" quitado de la lista · queda en Habituales",()=>restore(sn))}
 });
 $("pPhotoBtn").addEventListener("click",()=>{$("photoFile").value="";$("photoFile").click()});
 $("pPhotoDel").addEventListener("click",()=>{if(cur){cur.photo="";cur.photoKey="";cur.photoChanged=true;showPhoto("");renderPick();if(!cur.imgLoaded)scheduleImgSug(50)}});
@@ -1600,7 +1624,7 @@ let toastT=null,toastUndo=null,toastAlt=null;
 function toast(t,undo,alt){
   $("toastTxt").textContent=t;toastUndo=undo||null;toastAlt=alt||null;$("toastUndo").hidden=!undo;
   $("toastAlt").hidden=!alt;if(alt)$("toastAlt").textContent=alt.label;$("toast").hidden=false;
-  clearTimeout(toastT);toastT=setTimeout(()=>{$("toast").hidden=true;toastUndo=null;toastAlt=null},alt?6500:undo?5000:2400);
+  clearTimeout(toastT);toastT=setTimeout(()=>{$("toast").hidden=true;toastUndo=null;toastAlt=null},alt?7000:undo?6000:2400);
 }
 $("toastAlt").addEventListener("click",()=>{const a=toastAlt;toastAlt=null;toastUndo=null;$("toast").hidden=true;if(a)a.fn()});
 $("toastUndo").addEventListener("click",()=>{const u=toastUndo;toastUndo=null;$("toast").hidden=true;if(u)u()});
