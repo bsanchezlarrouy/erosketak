@@ -216,7 +216,8 @@ h1{font-family:var(--font-display);font-weight:800;font-size:30px;line-height:1.
 .sc-bottom input{flex:1;min-width:0;padding:12px;border-radius:12px;border:0;background:rgba(255,255,255,.95);color:#111}
 /* aviso */
 .toast{position:fixed;left:50%;bottom:calc(var(--nav-h) + 18px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(92vw,420px);background:var(--ink);color:var(--bg);border-radius:16px;padding:6px 6px 6px 16px;min-height:48px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-weight:600;font-size:14px;z-index:45}
-.toast button{border:0;background:none;color:var(--scan);font-weight:800;padding:10px 12px;min-height:40px}
+.toast button{border:0;background:none;color:var(--scan);font-weight:800;padding:10px 10px;min-height:40px}
+.toast #toastAlt{color:#ff9d94}
 @keyframes sweep{0%,100%{top:12%}50%{top:84%}}
 @media (prefers-reduced-motion: no-preference){
   .sheet,.win{animation:up .26s cubic-bezier(.2,.8,.2,1)}
@@ -406,7 +407,8 @@ h1{font-family:var(--font-display);font-weight:800;font-size:30px;line-height:1.
     <button class="btn ghost" type="button" id="pDelete" style="color:var(--danger)" hidden>Quitar de la lista</button>
     <div class="confirm" id="pDelConfirm" hidden>
       <span id="pDelMsg">¿Quitar este producto de la lista?</span>
-      <div class="actions"><button class="btn ghost" type="button" id="pDelNo">No</button><button class="btn danger" type="button" id="pDelYes">Sí</button></div>
+      <div class="actions"><button class="btn ghost" type="button" id="pDelNo">No</button><button class="btn" type="button" id="pDelYes">Sí</button></div>
+      <button class="btn danger" type="button" id="pDelHard" hidden>Borrar del todo (no va a Habituales)</button>
     </div>
   </form>
 </div>
@@ -444,14 +446,14 @@ h1{font-family:var(--font-display);font-weight:800;font-size:30px;line-height:1.
     <div class="actions" id="mActions"></div>
   </div>
 </div>
-<div class="toast" id="toast" role="status" hidden><span id="toastTxt"></span><button type="button" id="toastUndo" hidden>Deshacer</button></div>
+<div class="toast" id="toast" role="status" hidden><span id="toastTxt" style="flex:1"></span><button type="button" id="toastAlt" hidden></button><button type="button" id="toastUndo" hidden>Deshacer</button></div>
 
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script>
 (function(){
 "use strict";
-const CATS=[["Fruta y verdura","#3a9d4f"],["Panadería","#c27a1f"],["Carne y pescado","#c8473d"],["Lácteos y huevos","#a07c00"],["Despensa","#a0703c"],["Congelados","#3c7fc8"],["Bebidas","#2a8f8c"],["Limpieza","#7b5cc4"],["Higiene","#c4528f"],["Otros","#6b7a70"]];
+const CATS=[["Fruta","#d9662b"],["Verduras","#3a9d4f"],["Panadería","#9a6a1e"],["Carne y pescado","#c8473d"],["Embutidos","#9c3d5e"],["Lácteos y huevos","#a07c00"],["Despensa","#a0703c"],["Congelados","#3c7fc8"],["Bebidas","#2a8f8c"],["Limpieza","#7b5cc4"],["Higiene","#c4528f"],["Otros","#6b7a70"]];
 const CAT_NAMES=CATS.map(c=>c[0]);
 const CAT_COL=Object.fromEntries(CATS);
 const STORES=[["Mercadona","#1b7a3e"],["Eroski","#c4001a"],["Carrefour","#1d4f9c"],["Lidl","#8a6200"],["Dia","#6d2a7a"],["Veritas","#0f6f7a"]];
@@ -618,6 +620,8 @@ async function sync(){
     items=merged;if(localChanged){persist();render()}
     if(rowsSig(merged)!==rowsSig(remote)){await pushRemote(merged);setTimeout(()=>scheduleSync(0),4000)}
     lastSync=Date.now();syncErr="";syncErrStatus=0;sheetState="ok";setSyncUi("ok");
+    let mig=false;try{mig=!localStorage.getItem("pasillos-v2")}catch(e){}
+    if((mig||Object.values(items).some(d=>d&&!d.deleted&&d.cat==="Fruta y verdura"))&&migrateCats())render();
   }catch(e){
     syncErr=e instanceof ApiError?e.message:apiMsg(0);syncErrStatus=e instanceof ApiError?e.status:0;
     if(e instanceof ApiError&&(e.status===404||(e.status===403&&!e.write)))sheetState="denied";
@@ -769,9 +773,11 @@ async function startup(){
 function guessCat(name){
   const n=(name||"").toLowerCase();
   const rules=[
-    ["Fruta y verdura",/(manzana|naranja|plátano|platano|pera\b|uva|fresa|limón|limon|tomate(?! frito)|lechuga|cebolla|\bajo|patata|zanahoria|pimiento|calabac|pepino|aguacate|fruta|verdura|espinaca|brócoli|brocoli|champiñ|melón|melon|sandía|sandia|kiwi|mandarina)/],
+    ["Embutidos",/(jam[oó]n|chorizo|salchich[oó]n|fuet|mortadela|fiambre|salami|sobrasada|cecina|longaniza|lomo embuchado|morcilla|pavo (en lonchas|cocido|braseado)|pechuga de pavo|chopped|embutido|butifarra)/],
+    ["Fruta",/(manzana|naranja|pl[aá]tano|\bpera|\buva|fresa|lim[oó]n|aguacate|fruta|mel[oó]n|sand[ií]a|kiwi|mandarina|pi[ñn]a\b|mango|melocot[oó]n|nectarina|cereza|ciruela|frambuesa|ar[aá]ndano|granada|higo|papaya|pomelo|lima\b|albaricoque)/],
+    ["Verduras",/(tomate(?! frito)|lechuga|cebolla|\bajo|patata|zanahoria|pimiento|calabac|pepino|verdura|espinaca|br[oó]coli|champi[ñn]|setas|coliflor|col\b|repollo|puerro|jud[ií]a verde|berenjena|r[aá]bano|r[uú]cula|can[oó]nigos|ensalada|apio|alcachofa|esp[aá]rrago|acelga|calabaza|boniato|jengibre|perejil|cilantro|albahaca)/],
     ["Panadería",/(\bpan\b|baguette|barra de pan|bollo|croissant|magdalena|tostad)/],
-    ["Carne y pescado",/(pollo|ternera|cerdo|carne|filete|hamburgues|salchicha|jamón|jamon|chorizo|pavo|pescado|merluza|salmón|salmon|gamba|lomo|bacon|bacón)/],
+    ["Carne y pescado",/(pollo|ternera|cerdo|carne|filete|hamburgues|salchicha|pavo|pescado|merluza|salm[oó]n|gamba|lomo|bacon|bac[oó]n|cordero|conejo|at[uú]n fresco|bacalao|dorada|lubina|sepia|calamar|mejill[oó]n|langostino)/],
     ["Lácteos y huevos",/(leche|yogur|queso|mantequilla|nata|huevo|kéfir|kefir)/],
     ["Congelados",/(congelad|helado|pizza)/],
     ["Bebidas",/(agua|zumo|cerveza|vino|refresco|coca|bebida)/],
@@ -788,9 +794,12 @@ function catFromOff(tags,name){
   if(has(/en:frozen/))return "Congelados";
   if(has(/en:beverages|en:waters|en:sodas|en:juices|en:beers|en:wines|en:alcoholic/))return has(/en:plant-based-milk|en:milks/)?"Lácteos y huevos":"Bebidas";
   if(has(/en:dairies|en:milks|en:cheeses|en:yogurts|en:eggs|en:butters|en:creams/))return "Lácteos y huevos";
-  if(has(/en:meats|en:fishes|en:seafood|en:poultr|en:hams|en:sausages|en:prepared-meats/))return "Carne y pescado";
+  if(has(/en:hams|en:cured-meats|en:sausages|en:prepared-meats|en:cold-cuts|en:salamis|en:chorizos/))return "Embutidos";
+  if(has(/en:meats|en:fishes|en:seafood|en:poultr/))return "Carne y pescado";
   if(has(/en:breads|en:viennoiseries|en:pastries/))return "Panadería";
-  if(has(/en:fresh-fruits|en:fresh-vegetables/))return "Fruta y verdura";
+  const T=new Set(tags||[]),proc=/en:canned|en:jams|en:dried|en:juices|en:sauces|en:soups|en:prepared|en:compotes|en:snacks/;
+  if(T.has("en:fresh-fruits")||(T.has("en:fruits")&&!has(proc)))return "Fruta";
+  if(T.has("en:fresh-vegetables")||T.has("en:salads")||(T.has("en:vegetables")&&!has(proc)))return "Verduras";
   if(has(/en:cleaning|en:household/))return "Limpieza";
   if(t)return "Despensa";
   return guessCat(name);
@@ -1016,7 +1025,7 @@ function swipeAway(id){
   const d=items[id];if(!d||d.deleted)return;const sn=snapshot([id]);
   if(d.once){delItem(id);toast(d.name+" borrado",()=>restore(sn));return}
   setItem(id,Object.assign({},d,{archived:true,checked:false,timesBought:(d.timesBought||0)+(d.checked?1:0)}));
-  toast(d.name+" → Habituales",()=>restore(sn));
+  toast(d.name+" → Habituales",()=>restore(sn),{label:"Borrar",fn:()=>{delItem(id);toast(d.name+" borrado",()=>restore(sn))}});
 }
 
 /* ================= gestos: deslizar tarjetas ================= */
@@ -1248,7 +1257,9 @@ function openSheet({id,off,code,notFound,newName,qty,unit}){
     cur.cat=catOf(existing);cur.catSet=true;$("fPref").value=existing.pref||"";$("fNotes").value=existing.notes||"";
     $("pSave").textContent=existing.archived?"Añadir a la lista":"Guardar";
     $("pDelete").textContent=existing.archived?"Borrar de Habituales":(existing.once?"Borrar de la lista":"Quitar de la lista");
-    $("pDelMsg").textContent=existing.archived?"¿Borrar este producto de Habituales para siempre?":(existing.once?"¿Borrar este producto?":"¿Quitar este producto de la lista? Se queda en Habituales.");
+    $("pDelMsg").textContent=existing.archived?"¿Borrar este producto de Habituales para siempre?":(existing.once?"¿Borrar este producto?":"¿Quitar este producto de la lista?");
+    const soft=!existing.archived&&!existing.once;
+    $("pDelYes").textContent=soft?"Pasar a Habituales":"Sí, borrar";$("pDelYes").className=soft?"btn":"btn danger";$("pDelNo").textContent=soft?"Cancelar":"No";$("pDelHard").hidden=!soft;
     if(existing.archived){const st=storeOf(existing);setBanner(`Habitual · ${timesTxt(existing.timesBought||0)}`+(st?(st.brand?` · solo en ${st.name}`:` · os gusta más en ${st.name}`):""),"hab")}
     else if(existing.checked)setBanner("Ya está en el carrito","inl");
   }else{
@@ -1306,6 +1317,10 @@ $("pForm").addEventListener("submit",e=>{
 });
 $("pDelete").addEventListener("click",()=>{$("pDelConfirm").hidden=false});
 $("pDelNo").addEventListener("click",()=>{$("pDelConfirm").hidden=true});
+$("pDelHard").addEventListener("click",()=>{
+  if(!cur||!cur.id)return;const id=cur.id,d=items[id];closeSheet();if(!d)return;
+  const sn=snapshot([id]);delItem(id);toast(d.name+" borrado",()=>restore(sn));
+});
 $("pDelYes").addEventListener("click",()=>{
   if(!cur||!cur.id)return;const id=cur.id,d=items[id];closeSheet();if(!d)return;
   const sn=snapshot([id]);
@@ -1442,11 +1457,13 @@ function msg(title,body,buttons){
 }
 const closeMsg=()=>{$("mScrim").hidden=true};
 $("mScrim").addEventListener("click",e=>{if(e.target===$("mScrim"))closeMsg()});
-let toastT=null,toastUndo=null;
-function toast(t,undo){
-  $("toastTxt").textContent=t;toastUndo=undo||null;$("toastUndo").hidden=!undo;$("toast").hidden=false;
-  clearTimeout(toastT);toastT=setTimeout(()=>{$("toast").hidden=true;toastUndo=null},undo?5000:2400);
+let toastT=null,toastUndo=null,toastAlt=null;
+function toast(t,undo,alt){
+  $("toastTxt").textContent=t;toastUndo=undo||null;toastAlt=alt||null;$("toastUndo").hidden=!undo;
+  $("toastAlt").hidden=!alt;if(alt)$("toastAlt").textContent=alt.label;$("toast").hidden=false;
+  clearTimeout(toastT);toastT=setTimeout(()=>{$("toast").hidden=true;toastUndo=null;toastAlt=null},alt?6500:undo?5000:2400);
 }
+$("toastAlt").addEventListener("click",()=>{const a=toastAlt;toastAlt=null;toastUndo=null;$("toast").hidden=true;if(a)a.fn()});
 $("toastUndo").addEventListener("click",()=>{const u=toastUndo;toastUndo=null;$("toast").hidden=true;if(u)u()});
 function listText(){
   const pend=active().map(([,d])=>d).filter(d=>!d.checked);
@@ -1486,7 +1503,21 @@ setInterval(()=>{if(document.hidden||!linked()||!tokenOk()||syncing)return;const
 window.addEventListener("hashchange",()=>{if(location.hash.startsWith("#hoja=")||/access_token=/.test(location.hash))startup()});
 
 setTab("lista");
-loadAll().then(()=>{render();startup()});
+function migrateCats(){
+  /* «Fruta y verdura» se separa en Fruta y Verduras; los embutidos salen de «Carne y pescado» (una sola vez por dispositivo) */
+  let n=0;const now=Date.now();let firstRun=false;try{firstRun=!localStorage.getItem("pasillos-v2")}catch(e){}
+  for(const [id,d] of Object.entries(items)){
+    if(!d||d.deleted)continue;
+    let c=null;
+    if(d.cat==="Fruta y verdura"){const g=guessCat(d.name);c=g==="Fruta"||g==="Verduras"?g:(d.off&&catFromOff(d.off.cats,d.name)==="Fruta"?"Fruta":"Verduras")}
+    else if(firstRun&&d.cat==="Carne y pescado"&&guessCat(d.name)==="Embutidos")c="Embutidos";
+    if(c&&c!==d.cat){items[id]=Object.assign({},d,{cat:c,updatedAt:now});n++}
+  }
+  if(live().length){try{localStorage.setItem("pasillos-v2","1")}catch(e){}}
+  if(n){persist();scheduleSync(1500)}
+  return n;
+}
+loadAll().then(()=>{migrateCats();render();startup()});
 })();
 </script>
 </body>
