@@ -141,6 +141,11 @@ h1{font-family:var(--font-display);font-weight:800;font-size:30px;line-height:1.
 /* hojas */
 .scrim{position:fixed;inset:0;background:rgba(10,20,14,.5);display:flex;align-items:flex-end;justify-content:center;z-index:30}
 .sheet{background:var(--surface);width:100%;max-width:640px;max-height:92%;overflow:auto;border-radius:26px 26px 0 0;padding:10px 18px calc(22px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:14px;-webkit-overflow-scrolling:touch}
+.sheethead{position:sticky;top:-10px;z-index:3;background:var(--surface);display:flex;justify-content:space-between;gap:10px;margin:-6px -18px 0;padding:6px 18px 10px;border-bottom:1px solid var(--line)}
+.sheethead .btn{min-width:110px}
+.imgsug{display:flex;align-items:center;gap:12px;background:var(--soft);border-radius:14px;padding:8px 10px}
+.imgsug img{width:56px;height:56px;border-radius:12px;object-fit:cover;background:#fff;flex:none}
+.imgsug .t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.imgsug .t b{font-size:14px}.imgsug .t small{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .handle{align-self:center;width:40px;height:5px;border-radius:9px;background:var(--line);flex:none}
 .sheet h3{font-family:var(--font-display);font-size:22px;line-height:1.15;margin:0}
 .lbl{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
@@ -378,10 +383,15 @@ h1{font-family:var(--font-display);font-weight:800;font-size:30px;line-height:1.
 <div class="scrim" id="pScrim" hidden>
   <form class="sheet" id="pForm" role="dialog" aria-modal="true" aria-labelledby="pTitle" autocomplete="off">
     <span class="handle" aria-hidden="true"></span>
+    <div class="sheethead">
+      <button class="btn ghost" type="button" id="pCancel">Cerrar</button>
+      <button class="btn" type="submit" id="pSave">Añadir</button>
+    </div>
     <div class="banner" id="pBanner" hidden></div>
     <div class="status" id="pStatus"></div>
     <div id="pInfo"></div>
-    <img class="myphoto" id="pPhoto" alt="Tu foto del producto" hidden>
+    <img class="myphoto" id="pPhoto" alt="Foto del producto" hidden referrerpolicy="no-referrer">
+    <div class="imgsug" id="pImgSug" hidden><img id="pImgSugImg" alt="" referrerpolicy="no-referrer"><span class="t"><b>¿Usar esta foto?</b><small id="pImgSugSrc"></small></span><button type="button" class="btn small ghost" id="pImgOther">Otra</button><button type="button" class="btn small" id="pImgUse">Usar</button></div>
     <div class="field"><label for="fName">Nombre en la lista</label><input id="fName" class="nameinput" required></div>
     <div class="field"><span class="lbl" id="fCatLbl">Pasillo</span><div class="pills" id="fCats" role="group" aria-labelledby="fCatLbl"></div></div>
     <div class="field"><label for="fPref">Marca, tamaño, variedad</label><input id="fPref" placeholder="p. ej. Hacendado, 1 L, sin lactosa"></div>
@@ -399,10 +409,6 @@ h1{font-family:var(--font-display);font-weight:800;font-size:30px;line-height:1.
       <div class="bigstep"><button type="button" id="fDec" aria-label="Menos">−</button><label for="fQty" class="sr">Cantidad</label><input id="fQty" type="number" inputmode="decimal" min="0" step="any" value="1"><button type="button" class="plus" id="fInc" aria-label="Más">+</button></div>
       <label for="fUnit" class="sr">Unidad</label>
       <select id="fUnit" style="min-height:52px;border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:0 8px;flex:none"><option>ud</option><option>kg</option><option>g</option><option>L</option><option>paquete</option><option>pack</option><option>docena</option></select>
-    </div>
-    <div class="actions">
-      <button class="btn ghost" type="button" id="pCancel">Cerrar</button>
-      <button class="btn" type="submit" id="pSave">Añadir a la lista</button>
     </div>
     <button class="btn ghost" type="button" id="pAgain" hidden>Escanear otro</button>
     <button class="btn ghost" type="button" id="pDelete" style="color:var(--danger)" hidden>Quitar de la lista</button>
@@ -509,7 +515,7 @@ function delItem(id){items[id]={deleted:true,updatedAt:Date.now()};persist();ren
 const CLIENT_ID=String((window.LISTA_CONFIG&&window.LISTA_CONFIG.googleClientId)||"PON_AQUI_TU_ID");   // se pone en config.js
 const SCOPES="openid email profile https://www.googleapis.com/auth/spreadsheets";
 const AUTH_KEY="lista-compra-google",SHEET_KEY="lista-compra-hoja",TAB="Productos",PHOTO_TAB="Fotos";
-const HEAD=["id","Producto","Cantidad","Unidad","Pasillo","Preferencia","Notas","Código de barras","En el carrito","Habitual","Veces comprado","Añadido por","Creado","Actualizado","Borrado","Ficha (no tocar)","Foto (no tocar)","Súper preferido","Solo esta vez","Cualquier marca"];
+const HEAD=["id","Producto","Cantidad","Unidad","Pasillo","Preferencia","Notas","Código de barras","En el carrito","Habitual","Veces comprado","Añadido por","Creado","Actualizado","Borrado","Ficha (no tocar)","Foto (no tocar)","Súper preferido","Solo esta vez","Cualquier marca","Imagen (enlace)"];
 const jget=k=>{try{return JSON.parse(localStorage.getItem(k)||"null")}catch(e){return null}};
 const jset=(k,v)=>{try{if(v==null)localStorage.removeItem(k);else localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 let auth=jget(AUTH_KEY);                 // {token, exp, email, name}
@@ -567,8 +573,8 @@ const toISO=ms=>ms?new Date(ms).toISOString():"";
 const fromISO=s=>{if(typeof s==="number")return s;const t=Date.parse(s||"");return isNaN(t)?0:t};
 const yes=v=>v===true||/^(true|verdadero|s[ií]|x|1)$/i.test(String(v==null?"":v).trim());
 function toRow(id,d){
-  if(d.deleted)return [id,"","","","","","","","","","","","",toISO(d.updatedAt),"sí","","","","",""];
-  return [id,d.name||"",Number(d.qty)||1,d.unit||"ud",d.cat||"Otros",d.pref||"",d.notes||"",d.barcode||"",!!d.checked,!!d.archived,d.timesBought||0,d.addedBy||"",toISO(d.createdAt),toISO(d.updatedAt),"",d.off?JSON.stringify(d.off):"",d.photoKey||"",d.fav||"",!!d.once,!!d.anyBrand];
+  if(d.deleted)return [id,"","","","","","","","","","","","",toISO(d.updatedAt),"sí","","","","","",""];
+  return [id,d.name||"",Number(d.qty)||1,d.unit||"ud",d.cat||"Otros",d.pref||"",d.notes||"",d.barcode||"",!!d.checked,!!d.archived,d.timesBought||0,d.addedBy||"",toISO(d.createdAt),toISO(d.updatedAt),"",d.off?JSON.stringify(d.off):"",d.photoKey||"",d.fav||"",!!d.once,!!d.anyBrand,d.imgUrl||""];
 }
 function fromRow(r){
   const g=i=>r[i]==null?"":r[i];
@@ -576,11 +582,11 @@ function fromRow(r){
   const upd=fromISO(g(13));
   if(yes(g(14)))return [id,{deleted:true,updatedAt:upd}];
   let off=null;try{off=g(15)?JSON.parse(g(15)):null}catch(e){off=null}
-  return [id,{name:String(g(1)),qty:Number(String(g(2)).replace(",","."))||1,unit:String(g(3)||"ud"),cat:String(g(4)||"Otros"),pref:String(g(5)),notes:String(g(6)),barcode:String(g(7)),checked:yes(g(8)),archived:yes(g(9)),timesBought:Number(g(10))||0,addedBy:String(g(11)),createdAt:fromISO(g(12)),updatedAt:upd,off,photoKey:String(g(16)),photo:"",fav:String(g(17)||""),once:yes(g(18)),anyBrand:yes(g(19))}];
+  return [id,{name:String(g(1)),qty:Number(String(g(2)).replace(",","."))||1,unit:String(g(3)||"ud"),cat:String(g(4)||"Otros"),pref:String(g(5)),notes:String(g(6)),barcode:String(g(7)),checked:yes(g(8)),archived:yes(g(9)),timesBought:Number(g(10))||0,addedBy:String(g(11)),createdAt:fromISO(g(12)),updatedAt:upd,off,photoKey:String(g(16)),photo:"",fav:String(g(17)||""),once:yes(g(18)),anyBrand:yes(g(19)),imgUrl:String(g(20)||"")}];
 }
 let remoteRows=0;
 async function pullRemote(){
-  const j=await api(SHEETS+sheetId+"/values/"+rng(TAB+"!A1:T")+"?valueRenderOption=UNFORMATTED_VALUE");
+  const j=await api(SHEETS+sheetId+"/values/"+rng(TAB+"!A1:U")+"?valueRenderOption=UNFORMATTED_VALUE");
   const rows=(j&&j.values)||[];remoteRows=rows.length;
   const out={};
   for(const r of rows){const x=fromRow(r);if(x&&(!out[x[0]]||stamp(x[1])>=stamp(out[x[0]])))out[x[0]]=x[1]}
@@ -591,7 +597,7 @@ async function pushRemote(all){
   const values=[HEAD].concat(ids.map(id=>toRow(id,all[id])));
   const n=values.length;
   while(values.length<remoteRows)values.push(HEAD.map(()=>""));
-  const range=TAB+"!A1:T"+values.length;
+  const range=TAB+"!A1:U"+values.length;
   await api(SHEETS+sheetId+"/values/"+rng(range)+"?valueInputOption=RAW",{method:"PUT",body:{range,majorDimension:"ROWS",values}},true);
   remoteRows=n;
 }
@@ -646,8 +652,8 @@ function setSyncUi(state){
 const photoMem=new Map(),photoLoading=new Set();let photosFetched=0;
 function photoSrc(d){
   if(d.photo)return d.photo;
-  if(d.photoKey){const c=photoMem.get(d.photoKey);if(c)return c;loadPhoto(d.photoKey);return (d.off&&d.off.img)||""}
-  return (d.off&&d.off.img)||"";
+  if(d.photoKey){const c=photoMem.get(d.photoKey);if(c)return c;loadPhoto(d.photoKey);return (d.off&&d.off.img)||d.imgUrl||""}
+  return (d.off&&d.off.img)||d.imgUrl||"";
 }
 async function loadPhoto(key){
   if(photoLoading.has(key))return;photoLoading.add(key);
@@ -679,7 +685,7 @@ async function checkSheet(id){
 async function createSheet(){
   const j=await api("https://sheets.googleapis.com/v4/spreadsheets",{method:"POST",body:{properties:{title:"Lista de la compra",locale:"es_ES"},sheets:[{properties:{title:TAB,gridProperties:{frozenRowCount:1}}},{properties:{title:PHOTO_TAB}}]}},true);
   const id=j.spreadsheetId;
-  await api(SHEETS+id+"/values/"+rng(TAB+"!A1:T1")+"?valueInputOption=RAW",{method:"PUT",body:{range:TAB+"!A1:T1",values:[HEAD]}},true);
+  await api(SHEETS+id+"/values/"+rng(TAB+"!A1:U1")+"?valueInputOption=RAW",{method:"PUT",body:{range:TAB+"!A1:U1",values:[HEAD]}},true);
   return id;
 }
 function linkSheet(id){sheetId=id;remoteRows=0;jset(SHEET_KEY,{id})}
@@ -810,7 +816,15 @@ function catFromOff(tags,name){
 
 /* ================= buscador por texto ================= */
 let lastSearch=0;
+/* buscador nuevo de Open Food Facts (rápido); si falla, el clásico */
+async function salSearch(q,n){
+  const params=new URLSearchParams({q,langs:"es",page_size:String(n||24),sort_by:"-unique_scans_n",fields:"code,product_name,brands,quantity,image_front_small_url,nutriscore_grade"});
+  const {status,json}=await getJson("https://search.openfoodfacts.org/search?"+params.toString(),10000);
+  if(status>=400||!json||!Array.isArray(json.hits))throw new Error("http "+status);
+  return json.hits.map(h=>({code:h.code,product_name:h.product_name,brands:(Array.isArray(h.brands)?h.brands:[h.brands||""]).map(b=>String(b).replace(/^[a-z]{2}:/,"")).filter(Boolean).join(", "),quantity:h.quantity||"",image_front_small_url:h.image_front_small_url||"",nutriscore_grade:h.nutriscore_grade||""})).filter(p=>p.code&&p.product_name);
+}
 async function searchProducts(q){
+  try{const r=await salSearch(q,24);if(r.length)return r}catch(e){}
   const params=new URLSearchParams({search_terms:q,search_simple:"1",action:"process",json:"1",page_size:"24",sort_by:"unique_scans_n",tagtype_0:"countries",tag_contains_0:"contains",tag_0:"spain",fields:"code,product_name,product_name_es,brands,quantity,image_front_small_url,nutriscore_grade"});
   const {status,json}=await getJson("https://world.openfoodfacts.org/cgi/search.pl?"+params.toString(),15000);
   if(status===429)throw new Error("limite");
@@ -1211,7 +1225,7 @@ $("sForm").addEventListener("submit",async e=>{
   const habs=archived().filter(([,d])=>hitName(d.name,norm(q))||norm(d.pref).includes(norm(q)));
   const habHtml=habs.length?`<h2 class="h2">En tus habituales</h2>`+habs.map(([id,d])=>`<div class="card">${thumbHtml(d)}<button class="body" type="button" data-hopen="${esc(id)}"><span class="name">${esc(d.name)}</span><span class="meta">${d.off?nsBadge(d.off.ns):""}${storeBadge(d)}${esc(d.pref||"")}</span></button><button type="button" class="plusbtn" data-readd="${esc(id)}" aria-label="Añadir ${esc(d.name)}">+</button></div>`).join(""):"";
   $("sList").innerHTML=habHtml;
-  const wait=6500-(Date.now()-lastSearch);
+  const wait=2500-(Date.now()-lastSearch);
   if(wait>0){$("sStatus").textContent=`Para no saturar Open Food Facts, espera ${Math.ceil(wait/1000)} s y vuelve a buscar.`;return}
   lastSearch=Date.now();$("sStatus").textContent="Buscando en productos a la venta en España…";
   try{
@@ -1262,14 +1276,14 @@ function openSheet({id,off,code,notFound,newName,qty,unit}){
   }
   const existing=id&&items[id]&&!items[id].deleted?items[id]:null;
   const o=existing?existing.off:(off||null);
-  cur={id:existing?id:null,off:o,code:existing?existing.barcode:(code||""),photo:existing?existing.photo||"":"",photoKey:existing?existing.photoKey||"":"",photoChanged:false,cat:"Otros",catSet:false,fav:existing?existing.fav||"":"",once:existing?!!existing.once:false,anyBrand:existing?!!existing.anyBrand:false,orig:null};
-  const shownPhoto=cur.photo||(cur.photoKey?(photoMem.get(cur.photoKey)||""):"");
+  cur={id:existing?id:null,off:o,code:existing?existing.barcode:(code||""),photo:existing?existing.photo||"":"",photoKey:existing?existing.photoKey||"":"",photoChanged:false,cat:"Otros",catSet:false,fav:existing?existing.fav||"":"",once:existing?!!existing.once:false,anyBrand:existing?!!existing.anyBrand:false,orig:null,imgUrl:existing?existing.imgUrl||"":"",imgList:null,imgIdx:0,imgQ:""};
+  const shownPhoto=cur.photo||(cur.photoKey?(photoMem.get(cur.photoKey)||""):"")||cur.imgUrl;
   $("pInfo").innerHTML=infoHtml(o,existing?existing.name:(newName?"Producto nuevo":""));
   setBanner("");setStatus("");
   if(existing){
     $("fName").value=existing.name;$("fQty").value=existing.qty;$("fUnit").value=existing.unit||"ud";
     cur.cat=catOf(existing);cur.catSet=true;$("fPref").value=existing.pref||"";$("fNotes").value=existing.notes||"";
-    $("pSave").textContent=existing.archived?"Añadir a la lista":"Guardar";
+    $("pSave").textContent=existing.archived?"Añadir":"Guardar";
     $("pDelete").textContent=existing.archived?"Borrar de Habituales":(existing.once?"Borrar de la lista":"Quitar de la lista");
     $("pDelMsg").textContent=existing.archived?"¿Borrar este producto de Habituales para siempre?":(existing.once?"¿Borrar este producto?":"¿Quitar este producto de la lista?");
     const soft=!existing.archived&&!existing.once;
@@ -1281,12 +1295,12 @@ function openSheet({id,off,code,notFound,newName,qty,unit}){
     $("fName").value=name;$("fQty").value=qty||1;$("fUnit").value=unit||"ud";
     cur.cat=o?catFromOff(o.cats,name):guessCat(name);
     $("fPref").value=o?[o.brand,o.quantity].filter(Boolean).join(", "):"";$("fNotes").value="";
-    $("pSave").textContent="Añadir a la lista";
+    $("pSave").textContent="Añadir";
     if(notFound){setStatus(`El código ${code} no está en Open Food Facts ni en las otras bases. Escribe el nombre y añádelo: la app lo recordará para la próxima vez.`);$("pInfo").innerHTML+=`<div class="src">¿Quieres ayudar? <a href="https://world.openfoodfacts.org/cgi/product.pl?type=add&code=${encodeURIComponent(code)}" target="_blank" rel="noopener">Añade este producto a Open Food Facts</a>.</div>`}
     else if(cur.code){const dup=active().find(([,d])=>d.barcode&&d.barcode===cur.code);if(dup)setBanner(`Ya lo tienes en la lista (${fmtQty(dup[1])}). Si lo añades, se suma la cantidad.`,"inl")}
   }
   renderCats();refreshFichaStore();$("fOnce").setAttribute("aria-checked",cur.once?"true":"false");
-  showPhoto(shownPhoto);
+  showPhoto(shownPhoto);$("pImgSug").hidden=true;scheduleImgSug(50);
   $("pDelete").hidden=!existing;$("pDelConfirm").hidden=true;$("pAgain").hidden=!!existing||!!newName;
   $("pScrim").hidden=false;$("pScrim").querySelector(".sheet").scrollTop=0;
   if(!existing&&!$("fName").value)setTimeout(()=>$("fName").focus(),60);
@@ -1295,7 +1309,52 @@ function closeSheet(){cur=null;$("pScrim").hidden=true}
 $("fCats").addEventListener("click",e=>{const b=e.target.closest("[data-cat]");if(!b||!cur)return;cur.cat=b.dataset.cat;cur.catSet=true;renderCats()});
 $("fFavs").addEventListener("click",e=>{const b=e.target.closest("[data-fav]");if(!b||!cur)return;cur.fav=b.dataset.fav;refreshFichaStore()});
 $("fOnce").addEventListener("click",()=>{if(!cur)return;cur.once=!cur.once;$("fOnce").setAttribute("aria-checked",cur.once?"true":"false")});
-$("fName").addEventListener("input",()=>{if(!cur)return;if(!cur.id&&!cur.catSet&&!cur.off){cur.cat=guessCat($("fName").value);renderCats()}refreshFichaStore()});
+$("fName").addEventListener("input",()=>{if(!cur)return;if(!cur.id&&!cur.catSet&&!cur.off){cur.cat=guessCat($("fName").value);renderCats()}refreshFichaStore();scheduleImgSug(700)});
+/* foto propuesta para productos genéricos: imágenes libres de Wikipedia / Wikimedia Commons */
+const imgCache=new Map();let imgT=null;
+async function wikiImages(q){
+  if(imgCache.has(q))return imgCache.get(q);
+  let out=[];
+  try{
+    const hits=await salSearch(q,12);
+    const seen=new Set();
+    out=hits.filter(h=>h.image_front_small_url&&!seen.has(h.image_front_small_url)&&seen.add(h.image_front_small_url))
+      .sort((a,b)=>(/front_es/.test(b.image_front_small_url)?1:0)-(/front_es/.test(a.image_front_small_url)?1:0))
+      .slice(0,6).map(h=>({url:h.image_front_small_url,title:"Open Food Facts · "+h.product_name}));
+  }catch(e){}
+  try{out=out.concat(await wikiOnly(q))}catch(e){}
+  imgCache.set(q,out);return out;
+}
+async function wikiOnly(q){
+  const u="https://es.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrlimit=8&gsrnamespace=0&gsrsearch="+encodeURIComponent(q)+"&prop=pageimages&piprop=thumbnail&pithumbsize=320&pilicense=free";
+  const {json}=await getJson(u,8000);
+  const pages=Object.values((json&&json.query&&json.query.pages)||{}).sort((a,b)=>(a.index||0)-(b.index||0));
+  return pages.filter(p=>p.thumbnail&&p.thumbnail.source).slice(0,4).map(p=>({url:p.thumbnail.source,title:"Wikipedia · "+p.title}));
+}
+function imgTerm(){
+  const n=stripBrand($("fName").value,cur&&cur.off&&cur.off.brand).replace(/\d+([.,]\d+)?\s*(kg|g|gr|ml|l|ud|uds)?\b/gi," ").replace(/\s+/g," ").trim();
+  return n.split(" ").slice(0,3).join(" ");
+}
+function needsImg(){return cur&&!cur.photo&&!cur.photoKey&&!cur.imgUrl&&!(cur.off&&cur.off.img)&&!cur.imgDismissed}
+function scheduleImgSug(ms){clearTimeout(imgT);imgT=setTimeout(proposeImg,ms)}
+async function proposeImg(){
+  if(!needsImg()){$("pImgSug").hidden=true;return}
+  const q=imgTerm();if(q.length<3){$("pImgSug").hidden=true;return}
+  const me=cur;
+  try{
+    const list=await wikiImages(q);
+    if(cur!==me||!needsImg()||imgTerm()!==q)return;
+    cur.imgList=list;cur.imgIdx=0;cur.imgQ=q;showImgSug();
+  }catch(e){$("pImgSug").hidden=true}
+}
+function showImgSug(){
+  const it=cur&&cur.imgList&&cur.imgList[cur.imgIdx];
+  if(!it){$("pImgSug").hidden=true;return}
+  $("pImgSugImg").src=it.url;$("pImgSugSrc").textContent=it.title;
+  $("pImgOther").hidden=cur.imgList.length<2;$("pImgSug").hidden=false;
+}
+$("pImgOther").addEventListener("click",()=>{if(!cur||!cur.imgList)return;cur.imgIdx=(cur.imgIdx+1)%cur.imgList.length;showImgSug()});
+$("pImgUse").addEventListener("click",()=>{const it=cur&&cur.imgList&&cur.imgList[cur.imgIdx];if(!it)return;cur.imgUrl=it.url;$("pImgSug").hidden=true;showPhoto(it.url)});
 $("fPref").addEventListener("input",refreshFichaStore);
 $("fAny").addEventListener("click",()=>{
   if(!cur)return;cur.anyBrand=!cur.anyBrand;
@@ -1317,7 +1376,7 @@ $("pForm").addEventListener("submit",e=>{
   e.preventDefault();if(!cur)return;
   const name=$("fName").value.trim();if(!name){setStatus("Escribe el nombre del producto.",true);return}
   const q=parseFloat(String($("fQty").value).replace(",","."));const qty=Number.isFinite(q)&&q>0?q:1;
-  const base={name,qty,unit:$("fUnit").value,cat:cur.cat,pref:$("fPref").value.trim(),notes:$("fNotes").value.trim(),barcode:cur.code||"",off:cur.off||null,fav:brandStore({name,pref:$("fPref").value,off:cur.off,anyBrand:cur.anyBrand})?"":(cur.fav||""),once:!!cur.once,anyBrand:!!cur.anyBrand};
+  const base={imgUrl:cur.imgUrl||"",name,qty,unit:$("fUnit").value,cat:cur.cat,pref:$("fPref").value.trim(),notes:$("fNotes").value.trim(),barcode:cur.code||"",off:cur.off||null,fav:brandStore({name,pref:$("fPref").value,off:cur.off,anyBrand:cur.anyBrand})?"":(cur.fav||""),once:!!cur.once,anyBrand:!!cur.anyBrand};
   if(cur.photoChanged){base.photo=cur.photo||"";if(!cur.photo)base.photoKey=""}
   let tid;
   if(cur.id){tid=cur.id;const wasHab=items[cur.id]&&items[cur.id].archived;setItem(cur.id,Object.assign({},items[cur.id],base,wasHab?{archived:false,checked:false}:{},wasHab&&deviceName?{addedBy:deviceName}:{}))}
@@ -1342,7 +1401,7 @@ $("pDelYes").addEventListener("click",()=>{
   else{setItem(id,Object.assign({},d,{archived:true,checked:false}));toast("Quitado. Lo tienes en Habituales.",()=>restore(sn))}
 });
 $("pPhotoBtn").addEventListener("click",()=>{$("photoFile").value="";$("photoFile").click()});
-$("pPhotoDel").addEventListener("click",()=>{if(cur){cur.photo="";cur.photoChanged=true;showPhoto("")}});
+$("pPhotoDel").addEventListener("click",()=>{if(cur){cur.photo="";cur.photoChanged=true;cur.imgUrl="";cur.imgDismissed=true;showPhoto("")}});
 $("photoFile").addEventListener("change",async e=>{
   const f=e.target.files&&e.target.files[0];if(!f||!cur)return;
   try{cur.photo=await shrinkFit(f);cur.photoChanged=true;showPhoto(cur.photo)}catch(err){setStatus("No se ha podido leer la foto.",true)}
