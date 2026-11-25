@@ -1037,7 +1037,7 @@ function segUi(el,by){el.querySelectorAll("button").forEach(b=>b.setAttribute("a
 function rowHtml(id,d){
   const meta=[d.once?"Solo esta vez":"",d.anyBrand?"cualquier marca":"",d.pref,d.notes,d.addedBy&&d.addedBy!==deviceName?"lo añadió "+d.addedBy:""].filter(Boolean).join(" · ");
   const badges=(d.off?nsBadge(d.off.ns):"")+storeBadge(d);
-  return `<div class="sw"><div class="reveal" aria-hidden="true">${revealSide("rl",d.checked?R_UNDO:R_CART,d.checked?"Sacar":"Al carrito",d.checked?"del carrito":"")}${revealSide("rr",d.once?R_TRASH:R_HEART,d.once?"Eliminar":"Quitar de la lista",d.once?"de la app":"queda en Habituales")}</div>
+  return `<div class="sw"><div class="reveal" aria-hidden="true">${revealSide("rl",d.checked?R_UNDO:R_CART,d.checked?"Devolver a la lista":"Al carrito",d.checked?"de pendientes":"")}${revealSide("rr",d.once?R_TRASH:R_HEART,d.once?"Eliminar":"Quitar de la lista",d.once?"de la app":"queda en Habituales")}</div>
   <div class="card item${d.checked?" done":""}${flashId===id?" flash":""}" data-id="${esc(id)}">
     <button class="check" type="button" role="checkbox" aria-checked="${d.checked?"true":"false"}" aria-label="En el carrito: ${esc(d.name)}" data-check="${esc(id)}">${d.checked?checkSvg:""}</button>
     ${d.checked?"":thumbHtml(d)}
@@ -1092,6 +1092,7 @@ function toggleChecked(id){
   setItem(id,Object.assign({},d,{checked:!d.checked}));
   if(!d.checked){try{if(navigator.vibrate)navigator.vibrate(12)}catch(e){}
     if(active().every(([,x])=>x.checked))toast("¡Todo en el carrito!")}
+  else toast(d.name+" devuelto a la lista de pendientes");
 }
 function stepItem(id,dir){
   const d=items[id];if(!d||d.deleted)return;const st=stepOf(d);
