@@ -143,6 +143,14 @@ h1{font-family:var(--font-display);font-weight:800;font-size:30px;line-height:1.
 .sheet{background:var(--surface);width:100%;max-width:640px;max-height:92%;overflow:auto;border-radius:26px 26px 0 0;padding:10px 18px calc(22px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:14px;-webkit-overflow-scrolling:touch}
 .sheethead{position:sticky;top:-10px;z-index:3;background:var(--surface);display:flex;justify-content:space-between;gap:10px;margin:-6px -18px 0;padding:6px 18px 10px;border-bottom:1px solid var(--line)}
 .sheethead .btn{min-width:110px}
+.imgpick{display:flex;flex-direction:column;gap:8px}
+.pickhead{display:flex;align-items:baseline;gap:8px}.pickhead small{flex:1;min-width:0;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.linkbtn{border:0;background:none;color:var(--accent);font-weight:700;font-size:13px;padding:6px 0;min-height:32px}
+.strip{display:flex;gap:8px;overflow-x:auto;margin:0 -18px;padding:2px 18px 4px}
+.pick{flex:none;width:76px;height:76px;border-radius:14px;border:3px solid transparent;padding:0;overflow:hidden;background:var(--soft)}
+.pick img{width:100%;height:100%;object-fit:cover;display:block;background:#fff}
+.pick[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--surface) inset}
+.pick.wait{animation:fade 1s infinite alternate}
 .imgsug{display:flex;align-items:center;gap:12px;background:var(--soft);border-radius:14px;padding:8px 10px}
 .imgsug img{width:56px;height:56px;border-radius:12px;object-fit:cover;background:#fff;flex:none}
 .imgsug .t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.imgsug .t b{font-size:14px}.imgsug .t small{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -179,7 +187,7 @@ h1{font-family:var(--font-display);font-weight:800;font-size:30px;line-height:1.
 .pills{display:flex;flex-wrap:wrap;gap:6px}
 .pills.scroll{flex-wrap:nowrap;overflow-x:auto;margin:0 -18px;padding:0 18px}
 .pill{flex:none;min-height:36px;padding:0 12px;border-radius:99px;border:1.5px solid var(--line);background:var(--surface);font-weight:600;font-size:13px}
-.pill[aria-pressed="true"]{color:#fff;border-color:var(--pc,var(--ink));background:var(--pc,var(--ink))}
+.pill[aria-pressed="true"]{color:var(--pf,#fff);border-color:var(--pc,var(--ink));background:var(--pc,var(--ink))}
 .switch{display:flex;align-items:center;gap:12px;border:0;background:var(--soft);border-radius:14px;padding:12px 14px;text-align:left;width:100%}
 .switch .t{flex:1;display:flex;flex-direction:column;gap:2px}.switch .t b{font-size:15px}.switch .t small{font-size:12px;color:var(--muted)}
 .trk{width:46px;height:28px;flex:none;border-radius:99px;background:var(--line);position:relative;transition:background .2s}
@@ -224,6 +232,26 @@ h1{font-family:var(--font-display);font-weight:800;font-size:30px;line-height:1.
 .toast{position:fixed;left:50%;bottom:calc(var(--nav-h) + 18px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(92vw,420px);background:var(--ink);color:var(--bg);border-radius:16px;padding:6px 6px 6px 16px;min-height:48px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-weight:600;font-size:14px;z-index:45}
 .toast button{border:0;background:none;color:var(--scan);font-weight:800;padding:10px 10px;min-height:40px}
 .toast #toastAlt{color:#ff9d94}
+/* pantallas anchas: tablet en horizontal y ordenador */
+@media (min-width: 900px){
+  .wrap{max-width:1180px;padding-left:28px;padding-right:28px}
+  .qa,.chiprow{margin-left:-28px;margin-right:-28px;padding-left:28px;padding-right:28px}
+  .nav .in{max-width:760px}
+  #list,#habList{display:block !important;column-count:2;column-gap:20px}
+  #list>*,#habList>*{break-inside:avoid;-webkit-column-break-inside:avoid;margin-bottom:16px}
+  #sList{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  #sList>.h2{grid-column:1/-1}
+  #vFam:not([hidden]){display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:14px}
+  #vFam>.status,#vFam>p{grid-column:1/-1}
+  .scrim{align-items:center}
+  .sheet{border-radius:26px;max-height:88vh;max-width:680px}
+  .win{max-width:760px}
+}
+@media (min-width: 1400px){
+  .wrap{max-width:1500px}
+  #list,#habList{column-count:3}
+  #sList{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
 @keyframes sweep{0%,100%{top:12%}50%{top:84%}}
 @media (prefers-reduced-motion: no-preference){
   .sheet,.win{animation:up .26s cubic-bezier(.2,.8,.2,1)}
@@ -391,7 +419,10 @@ h1{font-family:var(--font-display);font-weight:800;font-size:30px;line-height:1.
     <div class="status" id="pStatus"></div>
     <div id="pInfo"></div>
     <img class="myphoto" id="pPhoto" alt="Foto del producto" hidden referrerpolicy="no-referrer">
-    <div class="imgsug" id="pImgSug" hidden><img id="pImgSugImg" alt="" referrerpolicy="no-referrer"><span class="t"><b>¿Usar esta foto?</b><small id="pImgSugSrc"></small></span><button type="button" class="btn small ghost" id="pImgOther">Otra</button><button type="button" class="btn small" id="pImgUse">Usar</button></div>
+    <div class="imgpick" id="pImgPick" hidden>
+      <div class="pickhead"><span class="lbl">Foto</span><small id="pImgSrc">Toca una para usarla</small><button type="button" class="linkbtn" id="pImgMore" hidden>Ver más</button></div>
+      <div class="strip noscroll" id="pImgStrip" role="group" aria-label="Fotos propuestas"></div>
+    </div>
     <div class="field"><label for="fName">Nombre en la lista</label><input id="fName" class="nameinput" required></div>
     <div class="field"><span class="lbl" id="fCatLbl">Pasillo</span><div class="pills" id="fCats" role="group" aria-labelledby="fCatLbl"></div></div>
     <div class="field"><label for="fPref">Marca, tamaño, variedad</label><input id="fPref" placeholder="p. ej. Hacendado, 1 L, sin lactosa"></div>
@@ -1263,7 +1294,7 @@ function refreshFichaStore(){
   const note=$("fStoreNote");
   if(b){note.hidden=false;note.textContent=`Marca propia de ${b} · solo se vende allí`;note.style.background=STORE_COL[b];note.style.color="#fff";$("fFavBox").hidden=true}
   else{note.hidden=true;$("fFavBox").hidden=false;
-    $("fFavs").innerHTML=[["","Me da igual"]].concat(STORES).map(([n,c])=>`<button type="button" class="pill" data-fav="${esc(n)}" aria-pressed="${(cur.fav||"")===n}" style="--pc:${n?c:"var(--ink)"}">${esc(n||"Me da igual")}</button>`).join("")}
+    $("fFavs").innerHTML=[["","Me da igual"]].concat(STORES).map(([n,c])=>`<button type="button" class="pill" data-fav="${esc(n)}" aria-pressed="${(cur.fav||"")===n}" style="--pc:${n?c:"var(--ink)"};--pf:${n?"#fff":"var(--bg)"}">${esc(n||"Me da igual")}</button>`).join("")}
 }
 function openSheet({id,off,code,notFound,newName,qty,unit}){
   if(!id&&!newName){
@@ -1276,8 +1307,8 @@ function openSheet({id,off,code,notFound,newName,qty,unit}){
   }
   const existing=id&&items[id]&&!items[id].deleted?items[id]:null;
   const o=existing?existing.off:(off||null);
-  cur={id:existing?id:null,off:o,code:existing?existing.barcode:(code||""),photo:existing?existing.photo||"":"",photoKey:existing?existing.photoKey||"":"",photoChanged:false,cat:"Otros",catSet:false,fav:existing?existing.fav||"":"",once:existing?!!existing.once:false,anyBrand:existing?!!existing.anyBrand:false,orig:null,imgUrl:existing?existing.imgUrl||"":"",imgList:null,imgIdx:0,imgQ:""};
-  const shownPhoto=cur.photo||(cur.photoKey?(photoMem.get(cur.photoKey)||""):"")||cur.imgUrl;
+  cur={id:existing?id:null,off:o,code:existing?existing.barcode:(code||""),photo:existing?existing.photo||"":"",photoKey:existing?existing.photoKey||"":"",photoChanged:false,cat:"Otros",catSet:false,fav:existing?existing.fav||"":"",once:existing?!!existing.once:false,anyBrand:existing?!!existing.anyBrand:false,orig:null,imgUrl:existing?existing.imgUrl||"":"",imgList:[],imgLoaded:false,imgLoading:false,pickList:null};
+  const shownPhoto=cur.photo||(cur.photoKey?(photoMem.get(cur.photoKey)||""):"");
   $("pInfo").innerHTML=infoHtml(o,existing?existing.name:(newName?"Producto nuevo":""));
   setBanner("");setStatus("");
   if(existing){
@@ -1300,7 +1331,7 @@ function openSheet({id,off,code,notFound,newName,qty,unit}){
     else if(cur.code){const dup=active().find(([,d])=>d.barcode&&d.barcode===cur.code);if(dup)setBanner(`Ya lo tienes en la lista (${fmtQty(dup[1])}). Si lo añades, se suma la cantidad.`,"inl")}
   }
   renderCats();refreshFichaStore();$("fOnce").setAttribute("aria-checked",cur.once?"true":"false");
-  showPhoto(shownPhoto);$("pImgSug").hidden=true;scheduleImgSug(50);
+  showPhoto(shownPhoto);cur.imgList=[];cur.imgLoaded=false;renderPick();if(!cur.imgUrl)scheduleImgSug(50);
   $("pDelete").hidden=!existing;$("pDelConfirm").hidden=true;$("pAgain").hidden=!!existing||!!newName;
   $("pScrim").hidden=false;$("pScrim").querySelector(".sheet").scrollTop=0;
   if(!existing&&!$("fName").value)setTimeout(()=>$("fName").focus(),60);
@@ -1335,26 +1366,40 @@ function imgTerm(){
   const n=stripBrand($("fName").value,cur&&cur.off&&cur.off.brand).replace(/\d+([.,]\d+)?\s*(kg|g|gr|ml|l|ud|uds)?\b/gi," ").replace(/\s+/g," ").trim();
   return n.split(" ").slice(0,3).join(" ");
 }
-function needsImg(){return cur&&!cur.photo&&!cur.photoKey&&!cur.imgUrl&&!(cur.off&&cur.off.img)&&!cur.imgDismissed}
+function needsImg(){return cur&&!cur.photo&&!cur.photoKey&&!(cur.off&&cur.off.img)}
 function scheduleImgSug(ms){clearTimeout(imgT);imgT=setTimeout(proposeImg,ms)}
 async function proposeImg(){
-  if(!needsImg()){$("pImgSug").hidden=true;return}
-  const q=imgTerm();if(q.length<3){$("pImgSug").hidden=true;return}
-  const me=cur;
+  if(!needsImg()){renderPick();return}
+  const q=imgTerm();if(q.length<3){cur.imgList=[];renderPick();return}
+  const me=cur;cur.imgLoading=true;renderPick();
   try{
     const list=await wikiImages(q);
-    if(cur!==me||!needsImg()||imgTerm()!==q)return;
-    cur.imgList=list;cur.imgIdx=0;cur.imgQ=q;showImgSug();
-  }catch(e){$("pImgSug").hidden=true}
+    if(cur!==me||imgTerm()!==q)return;
+    cur.imgList=list;cur.imgLoaded=true;
+  }catch(e){if(cur===me)cur.imgList=[]}
+  if(cur===me){cur.imgLoading=false;renderPick()}
 }
-function showImgSug(){
-  const it=cur&&cur.imgList&&cur.imgList[cur.imgIdx];
-  if(!it){$("pImgSug").hidden=true;return}
-  $("pImgSugImg").src=it.url;$("pImgSugSrc").textContent=it.title;
-  $("pImgOther").hidden=cur.imgList.length<2;$("pImgSug").hidden=false;
+function renderPick(){
+  const box=$("pImgPick");
+  if(!cur||!needsImg()){box.hidden=true;return}
+  const list=[];const seen=new Set();
+  (cur.imgList||[]).forEach(it=>{if(!seen.has(it.url)){seen.add(it.url);list.push(it)}});
+  if(cur.imgUrl&&!seen.has(cur.imgUrl))list.unshift({url:cur.imgUrl,title:"Foto actual"});
+  if(!list.length&&!cur.imgLoading){box.hidden=true;return}
+  box.hidden=false;
+  $("pImgMore").hidden=!!cur.imgLoaded||!!cur.imgLoading;
+  const sel=list.find(it=>it.url===cur.imgUrl);
+  $("pImgSrc").textContent=cur.imgLoading&&!list.length?"Buscando fotos…":sel?sel.title:"Toca una para usarla";
+  $("pImgStrip").innerHTML=list.map((it,i)=>`<button type="button" class="pick" data-pick="${i}" aria-pressed="${it.url===cur.imgUrl}" aria-label="${esc(it.title)}"><img src="${esc(it.url)}" alt="" loading="lazy" referrerpolicy="no-referrer"></button>`).join("")+(cur.imgLoading&&list.length?`<span class="pick wait" aria-hidden="true"></span>`:"");
+  cur.pickList=list;
 }
-$("pImgOther").addEventListener("click",()=>{if(!cur||!cur.imgList)return;cur.imgIdx=(cur.imgIdx+1)%cur.imgList.length;showImgSug()});
-$("pImgUse").addEventListener("click",()=>{const it=cur&&cur.imgList&&cur.imgList[cur.imgIdx];if(!it)return;cur.imgUrl=it.url;$("pImgSug").hidden=true;showPhoto(it.url)});
+$("pImgStrip").addEventListener("click",e=>{
+  const b=e.target.closest("[data-pick]");if(!b||!cur||!cur.pickList)return;
+  const it=cur.pickList[+b.dataset.pick];if(!it)return;
+  cur.imgUrl=cur.imgUrl===it.url?"":it.url;renderPick();
+});
+$("pImgMore").addEventListener("click",()=>{if(cur){cur.imgLoaded=false;proposeImg()}});
+$("pImgStrip").addEventListener("error",e=>{const b=e.target.closest&&e.target.closest("[data-pick]");if(b&&e.target.tagName==="IMG")b.hidden=true},true);
 $("fPref").addEventListener("input",refreshFichaStore);
 $("fAny").addEventListener("click",()=>{
   if(!cur)return;cur.anyBrand=!cur.anyBrand;
@@ -1401,10 +1446,10 @@ $("pDelYes").addEventListener("click",()=>{
   else{setItem(id,Object.assign({},d,{archived:true,checked:false}));toast("Quitado. Lo tienes en Habituales.",()=>restore(sn))}
 });
 $("pPhotoBtn").addEventListener("click",()=>{$("photoFile").value="";$("photoFile").click()});
-$("pPhotoDel").addEventListener("click",()=>{if(cur){cur.photo="";cur.photoChanged=true;cur.imgUrl="";cur.imgDismissed=true;showPhoto("")}});
+$("pPhotoDel").addEventListener("click",()=>{if(cur){cur.photo="";cur.photoKey="";cur.photoChanged=true;showPhoto("");renderPick();if(!cur.imgLoaded)scheduleImgSug(50)}});
 $("photoFile").addEventListener("change",async e=>{
   const f=e.target.files&&e.target.files[0];if(!f||!cur)return;
-  try{cur.photo=await shrinkFit(f);cur.photoChanged=true;showPhoto(cur.photo)}catch(err){setStatus("No se ha podido leer la foto.",true)}
+  try{cur.photo=await shrinkFit(f);cur.photoChanged=true;showPhoto(cur.photo);renderPick()}catch(err){setStatus("No se ha podido leer la foto.",true)}
 });
 async function shrinkFit(file){for(const [m,q] of [[640,0.7],[520,0.62],[420,0.55],[340,0.5],[260,0.45]]){const d=await shrink(file,m,q);if(d.length<48000)return d}throw new Error("foto")}
 function shrink(file,max,q){return new Promise((res,rej)=>{const u=URL.createObjectURL(file);const i=new Image();i.onload=()=>{const s=Math.min(1,max/Math.max(i.naturalWidth,i.naturalHeight));const c=document.createElement("canvas");c.width=Math.round(i.naturalWidth*s);c.height=Math.round(i.naturalHeight*s);c.getContext("2d").drawImage(i,0,0,c.width,c.height);URL.revokeObjectURL(u);res(c.toDataURL("image/jpeg",q))};i.onerror=()=>{URL.revokeObjectURL(u);rej()};i.src=u})}
